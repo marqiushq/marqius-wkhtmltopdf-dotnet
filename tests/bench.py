@@ -65,7 +65,8 @@ def main():
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>disable</Nullable>
     <DefineConstants>$(DefineConstants);{define}</DefineConstants>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <!-- DinkToPdf 1.0.8's 2017 dependencies stop a publish for one system with NU1605 unless it is let through -->
+    <NoWarn>$(NoWarn);NU1701;NU1605</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     {reference}
