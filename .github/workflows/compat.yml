@@ -16,8 +16,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: compat-${{ github.ref }}
-  cancel-in-progress: true
+  # per calling workflow: a push's run never cancels the one a release is waiting on; only a pull
+  # request's newer run replaces its older one
+  group: compat-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   compat:
