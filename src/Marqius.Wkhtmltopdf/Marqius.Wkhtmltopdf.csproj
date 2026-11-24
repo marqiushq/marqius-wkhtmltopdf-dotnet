@@ -7,7 +7,7 @@
     <RootNamespace>Marqius.Wkhtmltopdf</RootNamespace>
     <Title>Marqius.Wkhtmltopdf: wkhtmltopdf for .NET, maintained</Title>
     <Description>wkhtmltopdf for .NET in one package: marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf, for Windows, Linux (x64, ARM64, Alpine) and macOS. The same command line and options, so Rotativa and other libraries that run wkhtmltopdf work as before. No Qt, no X server, nothing else to install.</Description>
-    <PackageTags>wkhtmltopdf;wkhtmltoimage;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;rotativa;nreco;aspnetcore;dotnet;csharp;docker;linux;alpine;marqius</PackageTags>
+    <PackageTags>wkhtmltopdf;wkhtmltoimage;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;html-reports;reporting;report-generation;pdf-reports;rotativa;nreco;aspnetcore;dotnet;csharp;docker;linux;alpine;marqius</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <!-- the program is the package: no lib folder warning for a package that is mostly native files -->
     <NoWarn>$(NoWarn);NU5100;NU5129</NoWarn>

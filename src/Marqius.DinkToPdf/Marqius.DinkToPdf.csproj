@@ -8,7 +8,7 @@
     <RootNamespace>DinkToPdf</RootNamespace>
     <Title>Marqius.DinkToPdf: HTML to PDF for .NET, DinkToPdf without libwkhtmltox</Title>
     <Description>HTML to PDF for .NET with DinkToPdf's API and no libwkhtmltox: replace the DinkToPdf package and your code keeps working. Make invoices, reports and documents on Windows, Linux, macOS and Docker, with .NET 8, 9 and 10 and .NET Framework. Async and safe for many users at once; 30 times faster per PDF than DinkToPdf in our benchmark.</Description>
-    <PackageTags>dinktopdf;wkhtmltopdf;libwkhtmltox;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;invoice;report;aspnetcore;dotnet;csharp;docker;linux;marqius</PackageTags>
+    <PackageTags>dinktopdf;wkhtmltopdf;libwkhtmltox;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;html-reports;reporting;report-generation;pdf-reports;invoice;report;aspnetcore;dotnet;csharp;docker;linux;marqius</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <!-- safe to trim, and to publish as Native AOT (checked by tests/customer.py aot) -->
     <IsTrimmable Condition="'$(TargetFramework)' == 'net8.0'">true</IsTrimmable>
