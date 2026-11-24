@@ -64,12 +64,13 @@ def is_pdf(path):
 def workspace():
     root = Path(tempfile.mkdtemp(prefix="marqius-customer-"))
     env = dict(os.environ, DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1", NUGET_PACKAGES=str(root / "nuget-cache"))
+    # CUSTOMER_FEED=nuget.org: the packages as nuget.org serves them, after they are published
+    local = "" if os.environ.get("CUSTOMER_FEED") == "nuget.org" else f'    <add key="these packages" value="{DIST}" />\n'
     (root / "nuget.config").write_text(f"""<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
     <clear />
-    <add key="these packages" value="{DIST}" />
-    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+{local}    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
 </configuration>
 """, encoding="utf-8")
@@ -202,7 +203,7 @@ class Program
 CHECKS = {"quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework}
 
 if __name__ == "__main__":
-    if not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):
+    if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):
         sys.exit("no packages in dist/: run python3 build.py VERSION first")
     for check in sys.argv[1:] or ["quickstart", "dinktopdf-example"]:
         if check not in CHECKS:

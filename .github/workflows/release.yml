@@ -1,0 +1,194 @@
+name: Release
+
+# Keeps Marqius.Wkhtmltopdf and Marqius.DinkToPdf on the latest release of marqius-wkhtmltopdf, and
+# proves them first:
+#
+#   every hour     when marqius-wkhtmltopdf's latest GitHub release is newer than the packages on
+#                  nuget.org, build.py checks each program against its SHA-256 and its GitHub build
+#                  provenance and packs both packages. They are tested as a developer meets them
+#                  (tests/customer.py: both READMEs as printed, DinkToPdf's own example, ASP.NET Core,
+#                  .NET Framework) on Linux x64 and ARM64, Windows Server 2025 and 2022 and macOS. Only
+#                  then are they published, given GitHub's build provenance, tagged, and installed again
+#                  from nuget.org itself. An hour with no new release ends after that first check.
+#   by hand        Actions > Release > Run workflow: the same, now; it also publishes when nuget.org
+#                  has no version of the packages yet, which is how the first release goes out, and
+#                  takes package_version for a fix to the packages alone (0.12.14.1)
+#   publishing     only from a public repository whose variable PUBLISHING is "on", through
+#                  nuget.org's trusted publishing: nuget.org takes this workflow's GitHub sign-in, in
+#                  environment nuget, for an API key that lasts an hour; no key is stored here.
+#                  The variable NUGET_USER names the nuget.org account the policy belongs to.
+
+on:
+  schedule:
+    - cron: "47 * * * *"
+  workflow_dispatch:
+    inputs:
+      package_version:
+        description: "The packages' version, for a fix to the packages alone (empty: the release's own, 0.12.14)"
+        required: false
+        default: ""
+      macos:
+        description: "Test on GitHub's macOS too (off only while GitHub has no Mac to give, and the Mac was tested elsewhere)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  follow:
+    if: github.event_name != 'schedule' || !github.event.repository.private
+    runs-on: ubuntu-24.04
+    outputs:
+      publish: ${{ steps.follow.outputs.publish }}
+      version: ${{ steps.follow.outputs.version }}
+      package: ${{ steps.follow.outputs.package }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: follow
+        name: Follow marqius-wkhtmltopdf's latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_VERSION: ${{ inputs.package_version }}
+        run: |
+          latest=$(python3 .github/release.py latest)
+          versions=$(curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.dinktopdf/index.json 2>/dev/null || echo '{"versions":[]}')
+          have=$(python3 -c 'import json,sys; v=json.loads(sys.argv[1])["versions"]; print(v[-1] if v else "")' "$versions")
+          package=${PACKAGE_VERSION:-$latest}
+          publish=false
+          if [ -z "$have" ]; then
+            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && publish=true # the first release goes out by hand
+          elif python3 .github/release.py newer "$latest" "$(echo "$have" | cut -d. -f1-3)"; then
+            publish=true
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$PACKAGE_VERSION" ] && ! echo "$versions" | grep -q "\"$PACKAGE_VERSION\""; then
+            publish=true # a fix to the packages alone
+          fi
+          echo "nuget.org has ${have:-nothing}, latest release $latest: publish=$publish package=$package"
+          printf 'publish=%s\nversion=%s\npackage=%s\n' "$publish" "$latest" "$package" >>"$GITHUB_OUTPUT"
+
+  build:
+    needs: follow
+    if: needs.follow.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - name: The release's programs, checked, in both packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 build.py "${{ needs.follow.outputs.version }}" "${{ needs.follow.outputs.package }}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages
+          path: dist
+          retention-days: 7
+
+  test:
+    needs: build
+    name: test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2025, windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: matrix.os != 'macos-15' || inputs.macos != false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        with:
+          name: packages
+          path: dist
+      - name: As a developer does it, from these very packages
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        shell: bash
+        run: |
+          checks="quickstart dinktopdf-example aspnet"
+          case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
+          python tests/customer.py $checks
+
+  publish:
+    needs: [follow, test]
+    if: vars.PUBLISHING == 'on' && !github.event.repository.private
+    runs-on: ubuntu-24.04
+    environment: nuget
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: dist
+      - name: GitHub's build provenance for each package
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.nupkg
+      - name: nuget.org's key for this run, from this workflow's GitHub sign-in
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Publish (the program package first, then the one that needs it)
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          for p in dist/Marqius.Wkhtmltopdf.*.nupkg dist/Marqius.DinkToPdf.*.nupkg; do
+            dotnet nuget push "$p" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
+      - name: Tag the packages' version
+        run: |
+          git tag "v${{ needs.follow.outputs.package }}"
+          git push origin "v${{ needs.follow.outputs.package }}"
+
+  live:
+    needs: [follow, publish]
+    name: from nuget.org (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Wait until nuget.org serves the version
+        shell: bash
+        run: |
+          v="${{ needs.follow.outputs.package }}"
+          for i in $(seq 1 60); do
+            curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.dinktopdf/index.json | grep -q "\"$v\"" && exit 0
+            sleep 30
+          done
+          echo "nuget.org did not serve $v within 30 minutes"; exit 1
+      - name: Both READMEs, as printed, from nuget.org itself
+        shell: bash
+        env:
+          CUSTOMER_FEED: nuget.org
+        run: python tests/customer.py quickstart dinktopdf-example
