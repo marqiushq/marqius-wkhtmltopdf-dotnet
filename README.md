@@ -6,7 +6,7 @@
 
 - **No more "Unable to load shared library 'libwkhtmltox'".** There is no native library to load, so that error, `DllNotFoundException` and `BadImageFormatException` cannot happen.
 - **Your code stays the same.** Every class, method, event and setting of DinkToPdf 1.0.8, with the same names, in the same `DinkToPdf` namespace. Checked on every build.
-- **Fast, and safe with many users at once.** Each PDF is made in its own process, so requests run side by side.
+- **Fast, and safe with many users at once.** On the same machine, each PDF takes 7 ms, where DinkToPdf takes 212 ms. Each PDF is made in its own process, so requests run side by side. See [How fast is it?](#how-fast-is-it)
 - **Works everywhere .NET runs:** Windows, Linux (also Alpine and Docker), macOS; .NET 8, 9 and 10, and .NET Framework 4.6.2 or later.
 - **Many languages.** English, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean and more, as real text you can search and copy.
 
@@ -243,12 +243,25 @@ marqius-wkhtmltopdf is commercial software with a 30-day free trial.
 
 **How do I publish for one system only?** Add `-r`, for example `dotnet publish -c Release -r linux-x64`. Only that system's program is copied. Self-contained, single-file, trimmed and Native AOT apps all work.
 
+## How fast is it?
+
+The same invoice ([`tests/bench/invoice.html`](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/tests/bench/invoice.html)) was made by three converters, one after another, on the same GitHub machine (Linux, 4 cores). [See the run on GitHub.](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/actions/runs/45357818586)
+
+| | Marqius.DinkToPdf | DinkToPdf 1.0.8 (libwkhtmltox 0.12.4) | PuppeteerSharp 25.18.1 (Chrome 157) |
+|---|---|---|---|
+| First PDF after the app starts | **65 ms** | 245 ms | 504 ms |
+| Each PDF after that (median of 30) | **7.1 ms** | 212 ms | 64 ms |
+| 100 PDFs, 8 at a time | **265 a second** | 4.7 a second | 28 a second |
+| Space it needs on the server | **23 MB** | 45 MB | 725 MB |
+
+Each converter is used the way its own examples show. DinkToPdf runs with `SynchronizedConverter`, and PuppeteerSharp keeps one browser open with a new page for each PDF. "Space it needs" means the published app plus what it loads: libwkhtmltox for DinkToPdf, and the Chromium download for PuppeteerSharp. To measure it yourself, open this repository's Actions tab, choose Benchmark, and click Run workflow.
+
 ## What is different from DinkToPdf
 
 | | DinkToPdf | Marqius.DinkToPdf |
 |---|---|---|
 | What it loads | `libwkhtmltox` 0.12.4 (2016), inside your app | nothing: the program runs next to your app |
-| Many PDFs at once | one at a time | side by side |
+| Many PDFs at once | one at a time | side by side, as many as the server has processors |
 | `await` | no | `ConvertAsync` (with `using Marqius.DinkToPdf;`), with cancelling |
 | Files on the server (`file:///`) | load | load |
 | Text size on Windows | about an eighth bigger than on Linux | the same as on Linux, on every system |
@@ -270,4 +283,4 @@ Every change is tested on GitHub before it is published:
 
 27 documents, covering every DinkToPdf setting that changes a PDF, are made by both DinkToPdf and Marqius.DinkToPdf, and compared page by page. See the "Test" and "Beside DinkToPdf" runs in this repository's [Actions](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/actions).
 
-Marqius.DinkToPdf's own code is MIT, and is built on [DinkToPdf](https://github.com/rdvojmoc/DinkToPdf) by Rok Dvojmoc (MIT); see [LICENSE.md](LICENSE.md). marqius is not connected to DinkToPdf or its author. For Rotativa, NReco.PdfGenerator or your own code, use the program alone: [Marqius.Wkhtmltopdf](https://www.nuget.org/packages/Marqius.Wkhtmltopdf).
+Marqius.DinkToPdf's own code is MIT, and is built on [DinkToPdf](https://github.com/rdvojmoc/DinkToPdf) by Rok Dvojmoc (MIT); see [LICENSE.md](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/LICENSE.md). marqius is not connected to DinkToPdf or its author. For Rotativa, NReco.PdfGenerator or your own code, use the program alone: [Marqius.Wkhtmltopdf](https://www.nuget.org/packages/Marqius.Wkhtmltopdf).
