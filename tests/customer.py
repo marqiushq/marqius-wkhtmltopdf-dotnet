@@ -16,6 +16,9 @@ a tab, its name, a tab, the detail; the exit status is 1 when one fails.
   aspnet             the README's ASP.NET Core lines in a minimal API, published, run, asked for
                      /invoice
   framework          (Windows) a .NET Framework 4.8 console app with the package, built and run
+  publish            dotnet publish -r <this system>, self-contained and single-file, run from elsewhere
+  rotativa           Rotativa.AspNetCore 1.5.0 with the program README's two lines; ViewAsPdf
+  cache              a cache folder that cannot be written (IIS): the index goes to the temporary folder
 """
 import os
 import re
@@ -25,6 +28,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -200,7 +204,133 @@ class Program
         report(False, name, e)
 
 
-CHECKS = {"quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework}
+def this_rid():
+    import platform
+    machine = platform.machine().lower()
+    arm = machine in ("arm64", "aarch64")
+    if os.name == "nt":
+        return "win-x64"
+    if sys.platform == "darwin":
+        return "osx-arm64"
+    return "linux-arm64" if arm else "linux-x64"
+
+
+def publish():
+    """dotnet publish for this system: self-contained, and single-file; the app runs from its folder."""
+    rid = this_rid()
+    root, env = workspace()
+    run(["dotnet", "new", "console", "-f", "net8.0", "-o", "Invoice"], root, env)
+    app = root / "Invoice"
+    run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+    (app / "Program.cs").write_text(example("README.md", "quickstart Program.cs"), encoding="utf-8")
+    for mode, extra in (("self-contained", ["--self-contained"]), ("single-file", ["--self-contained", "-p:PublishSingleFile=true"])):
+        name = f"dotnet publish -r {rid} ({mode}): the published app makes a PDF"
+        try:
+            out = app / f"publish-{mode}"
+            run(["dotnet", "publish", "-c", "Release", "-r", rid, *extra, "-o", str(out)], app, env)
+            others = [d.name for d in (out / "runtimes").iterdir()] if (out / "runtimes").exists() else []
+            elsewhere = Path(tempfile.mkdtemp(prefix="marqius-run-"))
+            exe = out / ("Invoice.exe" if os.name == "nt" else "Invoice")
+            run([str(exe)], elsewhere, env)
+            ok = is_pdf(elsewhere / "invoice.pdf") and not others
+            report(ok, name, f"invoice.pdf; the program beside the app, no other system's ({sum(1 for _ in out.iterdir())} files)" if ok
+                   else f"pdf={is_pdf(elsewhere / 'invoice.pdf')}, other systems' folders: {others}")
+        except Exception as e:  # noqa: BLE001
+            report(False, name, e)
+
+
+def rotativa():
+    """Rotativa.AspNetCore 1.5.0 with the README's two lines: ViewAsPdf makes the PDF."""
+    name = "Rotativa.AspNetCore: the README's two lines, then ViewAsPdf"
+    try:
+        root, env = workspace()
+        run(["dotnet", "new", "mvc", "-f", "net8.0", "-o", "Shop"], root, env)
+        app = root / "Shop"
+        run(["dotnet", "add", "package", "Rotativa.AspNetCore", "--version", "1.5.0"], app, env)
+        run(["dotnet", "add", "package", "Marqius.Wkhtmltopdf"], app, env)
+        program = (app / "Program.cs").read_text(encoding="utf-8")
+        anchor = "var app = builder.Build();\n"
+        assert program.count(anchor) == 1, "the mvc template changed"
+        program = "using Rotativa.AspNetCore;\n" + program.replace(anchor, anchor + example("src/Marqius.Wkhtmltopdf/README.md", "rotativa setup"))
+        (app / "Program.cs").write_text(program, encoding="utf-8")
+        controller = app / "Controllers" / "HomeController.cs"
+        source = controller.read_text(encoding="utf-8")
+        source = "using Rotativa.AspNetCore;\n" + source.replace("    public IActionResult Privacy()", "    public IActionResult Invoice() => new ViewAsPdf(\"Index\");\n\n    public IActionResult Privacy()", 1)
+        controller.write_text(source, encoding="utf-8")
+        run(["dotnet", "publish", "-c", "Release", "-o", str(app / "publish")], app, env)
+        port = free_port()
+        server = subprocess.Popen(["dotnet", "Shop.dll", "--urls", f"http://127.0.0.1:{port}"], cwd=app / "publish", env=env,
+                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        try:
+            body, kind = b"", ""
+            for _ in range(60):
+                try:
+                    with urllib.request.urlopen(f"http://127.0.0.1:{port}/Home/Invoice", timeout=60) as r:
+                        body, kind = r.read(), r.headers.get("Content-Type")
+                    break
+                except urllib.error.HTTPError as e:
+                    body, kind = e.read(), f"HTTP {e.code}"
+                    break
+                except OSError:
+                    time.sleep(1)
+            ok = body[:5] == b"%PDF-"
+            names = sorted(p.name for p in (app / "publish" / "wwwroot" / "Rotativa").iterdir()) if (app / "publish" / "wwwroot" / "Rotativa").exists() else []
+            report(ok, name, f"{len(body)} bytes, {kind}; wwwroot/Rotativa holds {', '.join(names)}" if ok else f"{kind}: {body[:300]!r}")
+        finally:
+            server.kill()
+    except Exception as e:  # noqa: BLE001
+        report(False, name, e)
+
+
+def cache():
+    """A server whose usual cache folder cannot be written (an IIS pool's identity, a read-only home):
+    the package gives the program a cache in the temporary folder, so the second PDF does not read
+    every font again."""
+    name = "a cache folder that cannot be written: the font index goes to the temporary folder"
+    try:
+        root, env = workspace()
+        run(["dotnet", "new", "console", "-f", "net8.0", "-o", "Cache"], root, env)
+        app = root / "Cache"
+        run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+        (app / "Program.cs").write_text("""using System.Diagnostics;
+using DinkToPdf;
+
+Console.WriteLine("cache: " + (Marqius.Wkhtmltopdf.Wkhtmltopdf.CacheFolder ?? "the program's own"));
+var converter = new SynchronizedConverter(new PdfTools());
+for (int i = 1; i <= 2; i++)
+{
+    var clock = Stopwatch.StartNew();
+    var pdf = converter.Convert(new HtmlToPdfDocument { Objects = { new ObjectSettings { HtmlContent = "<p>Cache " + i + "</p>" } } });
+    Console.WriteLine($"pdf {i}: {pdf.Length} bytes, {clock.ElapsedMilliseconds} ms");
+}
+""", encoding="utf-8")
+        run(["dotnet", "build", "-c", "Release"], app, env)
+        locked = root / "locked"
+        locked.mkdir()
+        env2 = dict(env, MARQIUS_CACHE="")
+        env2.pop("MARQIUS_CACHE")
+        if os.name == "nt":
+            # a LOCALAPPDATA that names a file, not a folder: nothing can be made under it
+            (locked / "not-a-folder").write_text("")
+            env2["LOCALAPPDATA"] = str(locked / "not-a-folder")
+        else:
+            os.chmod(locked, 0o500)
+            env2["HOME"] = str(locked)
+            env2.pop("XDG_CACHE_HOME", None)
+        env2["DOTNET_CLI_HOME"] = str(root / "dotnet-home")  # the dotnet command's own folder, apart from HOME
+        out = run(["dotnet", str(app / "bin" / "Release" / "net8.0" / "Cache.dll")], app, env2)
+        lines = out.stdout.strip().splitlines()
+        temp = tempfile.gettempdir()
+        ok = (len(lines) == 3 and "marqius-cache-" in lines[0] and all(" 0 bytes" not in l for l in lines[1:]))
+        report(ok, name, "; ".join(lines) if ok else out.stdout + out.stderr)
+        if os.name != "nt":
+            os.chmod(locked, 0o700)
+    except Exception as e:  # noqa: BLE001
+        report(False, name, e)
+
+
+CHECKS = {"quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
+          "publish": publish, "rotativa": rotativa, "cache": cache}
 
 if __name__ == "__main__":
     if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):

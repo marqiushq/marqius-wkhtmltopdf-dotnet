@@ -41,6 +41,7 @@ dotnet run
 
 Rotativa runs `wkhtmltopdf` from a folder of its own. `Wkhtmltopdf.Install` puts that name there, running this program, at the app's start:
 
+<!-- example: rotativa setup -->
 ```csharp
 Marqius.Wkhtmltopdf.Wkhtmltopdf.Install(Path.Combine(app.Environment.WebRootPath, "Rotativa"));
 RotativaConfiguration.Setup(app.Environment.WebRootPath, "Rotativa");
