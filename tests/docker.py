@@ -43,16 +43,9 @@ def ask(port, seconds=90):
 
 def main():
     root, env = customer.workspace()
-    customer.run(["dotnet", "new", "web", "-f", "net8.0", "-o", "MyApp"], root, env)
-    app = root / "MyApp"
-    customer.run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
-    register = customer.example("README.md", "aspnet register")
-    usings = "".join(l + "\n" for l in register.splitlines() if l.startswith("using "))
-    register = "".join(l + "\n" for l in register.splitlines() if not l.startswith("using ") and l.strip())
-    (app / "Program.cs").write_text(usings + "var builder = WebApplication.CreateBuilder(args);\n" + register
-                                    + "var app = builder.Build();\n" + customer.example("README.md", "aspnet endpoint")
-                                    + "app.Run();\n", encoding="utf-8")
-    customer.run(["dotnet", "publish", "-c", "Release", "-o", str(app / "publish")], app, env)
+    app = customer.website(root, env)
+    # the README's Step 3, as printed
+    customer.run(["dotnet", "publish", "-c", "Release", "-o", "publish"], app, env)
 
     printed = customer.example("README.md", "docker Dockerfile")
     alpine = (printed.replace("FROM mcr.microsoft.com/dotnet/aspnet:8.0", "FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine")
@@ -63,7 +56,7 @@ def main():
 
     for tag, dockerfile, wants_pdf in (("debian", printed, True), ("alpine", alpine, True), ("no-fonts", bare, False)):
         name = (f"the README's Dockerfile ({tag})" if wants_pdf else "the Dockerfile without its fonts line") + ": GET /invoice"
-        image = f"marqius-dinktopdf-test-{tag}"
+        image = "invoice-site" if tag == "debian" else f"invoice-site-{tag}"
         try:
             (app / "Dockerfile").write_text(dockerfile, encoding="utf-8")
             docker("build", "-q", "-t", image, ".", cwd=app)

@@ -1,16 +1,18 @@
-# wkhtmltopdf for .NET: Marqius.Wkhtmltopdf, the maintained drop-in replacement
+# wkhtmltopdf for .NET: Marqius.Wkhtmltopdf
 
 [![NuGet](https://img.shields.io/nuget/v/Marqius.Wkhtmltopdf)](https://www.nuget.org/packages/Marqius.Wkhtmltopdf)
 
-**Marqius.Wkhtmltopdf puts marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf, in your .NET app** for Windows, Linux and macOS, from one NuGet package. Give its path to the library you use, Rotativa, NReco.PdfGenerator, Wkhtmltopdf.NetCore or your own `Process.Start`, and your HTML becomes PDFs and pictures as before: the same command line and options as wkhtmltopdf 0.12.6, with no Qt, no X server and nothing to install on the server.
+**Marqius.Wkhtmltopdf puts wkhtmltopdf in your .NET app, from one NuGet package.** It contains marqius-wkhtmltopdf, the maintained replacement for wkhtmltopdf, for Windows, Linux and macOS. It reads the same command line and options as wkhtmltopdf 0.12.6, so Rotativa and other libraries that run wkhtmltopdf work as before. There is no Qt, no X server and nothing else to install.
 
-- **One package for every server.** Windows x64, Linux x64 and ARM64 (Alpine too), macOS on Apple silicon; `dotnet publish -r linux-x64` keeps only that system's program.
-- **Checked before it runs.** Each program is GitHub's own build of the release, checked against its SHA-256 and its GitHub build provenance before it is packed, and against that SHA-256 again before its first run.
-- **Many languages, even on one page.** Arabic and Hebrew from right to left, Hindi, Thai, Chinese, Japanese and Korean as well as English.
+- **One package for every server:** Windows x64, Linux x64 and ARM64 (Alpine too), macOS on Apple silicon. `dotnet publish -r linux-x64` keeps only the program that system needs.
+- **Checked before it runs:** each program is GitHub's own build, checked against its SHA-256 and GitHub build record before it goes into the package, and against that SHA-256 again before it first runs.
+- **Many languages:** English, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean and more.
 
-Using DinkToPdf? [Marqius.DinkToPdf](https://www.nuget.org/packages/Marqius.DinkToPdf) is DinkToPdf on this program, with no libwkhtmltox.
+Using DinkToPdf? Use [Marqius.DinkToPdf](https://www.nuget.org/packages/Marqius.DinkToPdf) instead: DinkToPdf's own code, with no `libwkhtmltox`.
 
 ## Make your first PDF
+
+**Step 1.** Make a new app and add the package:
 
 ```bash
 dotnet new console -o Invoice
@@ -18,39 +20,103 @@ cd Invoice
 dotnet add package Marqius.Wkhtmltopdf
 ```
 
-`Program.cs`:
+**Step 2.** Open `Program.cs`, delete everything in it, and paste this:
 
 <!-- example: quickstart Program.cs -->
 ```csharp
 using System.Diagnostics;
 using Marqius.Wkhtmltopdf;
 
+// The HTML to turn into a PDF
 File.WriteAllText("invoice.html", "<h1>Invoice 42</h1><p>Thank you for your order.</p>");
+
+// Run the program, as you would run wkhtmltopdf: input file, output file
 var run = Process.Start(Wkhtmltopdf.StartInfo(new[] { "invoice.html", "invoice.pdf" }))!;
 run.WaitForExit();
+
 Console.WriteLine(run.ExitCode == 0 ? "invoice.pdf is ready" : run.StandardError.ReadToEnd());
 ```
+
+**Step 3.** Run it:
 
 ```bash
 dotnet run
 ```
 
+You see `invoice.pdf is ready`, and `invoice.pdf` is in the folder. Every wkhtmltopdf option works in that list, such as `"--orientation", "Landscape"`.
+
 `Wkhtmltopdf.Path` is the program's full path, for any library that asks where wkhtmltopdf is.
 
-## Rotativa
+## Use it with Rotativa (ASP.NET Core MVC)
 
-Rotativa runs `wkhtmltopdf` from a folder of its own. `Wkhtmltopdf.Install` puts that name there, running this program, at the app's start:
+Rotativa runs `wkhtmltopdf` from a folder of its own, `wwwroot/Rotativa`. One line puts it there, using this package's program.
 
-<!-- example: rotativa setup -->
-```csharp
-Marqius.Wkhtmltopdf.Wkhtmltopdf.Install(Path.Combine(app.Environment.WebRootPath, "Rotativa"));
-RotativaConfiguration.Setup(app.Environment.WebRootPath, "Rotativa");
+**Step 1.** Make a new MVC website and add both packages:
+
+```bash
+dotnet new mvc -o Shop
+cd Shop
+dotnet add package Rotativa.AspNetCore
+dotnet add package Marqius.Wkhtmltopdf
 ```
 
-Delete the old `wkhtmltopdf.exe` from `wwwroot/Rotativa` first, or `Install` keeps it beside the new name as `wkhtmltopdf.before-marqius`.
+**Step 2.** Open `Program.cs`, delete everything in it, and paste this:
+
+<!-- example: rotativa Program.cs -->
+```csharp
+using Marqius.Wkhtmltopdf;
+using Rotativa.AspNetCore;
+
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+// Put wkhtmltopdf where Rotativa looks for it, then tell Rotativa where that is
+Wkhtmltopdf.Install(Path.Combine(app.Environment.WebRootPath, "Rotativa"));
+RotativaConfiguration.Setup(app.Environment.WebRootPath, "Rotativa");
+
+app.UseStaticFiles();
+app.UseRouting();
+app.MapControllerRoute(name: "default", pattern: "{controller=Home}/{action=Index}/{id?}");
+app.Run();
+```
+
+**Step 3.** Open `Controllers/HomeController.cs`, delete everything in it, and paste this:
+
+<!-- example: rotativa HomeController.cs -->
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Rotativa.AspNetCore;
+
+namespace Shop.Controllers;
+
+public class HomeController : Controller
+{
+    public IActionResult Index() => View();
+
+    // The home page, as a PDF
+    public IActionResult Invoice() => new ViewAsPdf("Index");
+}
+```
+
+**Step 4.** Run it:
+
+```bash
+dotnet run
+```
+
+It prints an address such as `http://localhost:5000`. Open that address with `/Home/Invoice` at the end, and you see the home page as a PDF.
+
+Already have an old `wkhtmltopdf.exe` in `wwwroot/Rotativa`? You can delete it. If you leave it, `Install` keeps it next to the new one, renamed `wkhtmltopdf.before-marqius`.
 
 ## Licence and trial
 
-marqius-wkhtmltopdf is commercial software with a 30-day free trial. After the trial, without a licence, each page carries one line, "Prepared by Marqius, Purchase Licence"; your PDFs never stop. Personal, teaching and open-source use is free with a Community licence. Give a licence in the app's environment as `MARQIUS_LICENCE` (the licence itself, or a file that holds it). [See the plans and prices](https://marqius.com/licence/marqius-wkhtmltopdf).
+marqius-wkhtmltopdf is commercial software with a 30-day free trial.
+- **After the trial,** without a licence, each page gets one small line: "Prepared by Marqius, Purchase Licence". Your PDFs never stop.
+- **Personal, teaching and open-source use** is free with a Community licence.
+- **To use a licence,** set the environment variable `MARQIUS_LICENCE` to the licence, or to the path of a file that holds it.
+
+[See the plans and prices](https://marqius.com/licence/marqius-wkhtmltopdf).
 
 This package's own .NET code is MIT; see LICENSE.md.

@@ -124,22 +124,42 @@ def free_port():
         return s.getsockname()[1]
 
 
-def aspnet():
-    name = "ASP.NET Core: the README's register and endpoint lines, published and asked for /invoice"
+def website(root, env):
+    """The README's website: dotnet new web -o InvoiceSite, the package, its Program.cs as printed."""
+    run(["dotnet", "new", "web", "-f", "net8.0", "-o", "InvoiceSite"], root, env)
+    app = root / "InvoiceSite"
+    run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+    (app / "Program.cs").write_text(example("README.md", "aspnet Program.cs"), encoding="utf-8")
+    return app
+
+
+def settings():
+    """The README's "Common settings" Program.cs: landscape A4 with a header, footer and title."""
+    name = "the README's common settings, as printed: A4 turned, header, footer, title"
     try:
         root, env = workspace()
-        run(["dotnet", "new", "web", "-f", "net8.0", "-o", "MyApp"], root, env)
-        app = root / "MyApp"
+        run(["dotnet", "new", "console", "-o", "Settings"], root, env)
+        app = root / "Settings"
         run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
-        register = example("README.md", "aspnet register")
-        usings = "".join(l + "\n" for l in register.splitlines() if l.startswith("using "))
-        register = "".join(l + "\n" for l in register.splitlines() if not l.startswith("using ") and l.strip())
-        program = (usings + "var builder = WebApplication.CreateBuilder(args);\n" + register
-                   + "var app = builder.Build();\n" + example("README.md", "aspnet endpoint") + "app.Run();\n")
-        (app / "Program.cs").write_text(program, encoding="utf-8")
+        (app / "Program.cs").write_text(example("README.md", "settings Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        pdf = app / "invoice.pdf"
+        w, h = page_size(pdf) if is_pdf(pdf) else (0, 0)
+        text = pdf.read_bytes().decode("latin-1") if pdf.exists() else ""
+        ok = abs(w - 841.9) < 1 and abs(h - 595.3) < 1 and "invoice.pdf is ready" in out.stdout
+        report(ok, name, f"{w:.1f} x {h:.1f} pt" if ok else f"page {w:.1f} x {h:.1f}; {out.stdout[-300:]}")
+    except Exception as e:  # noqa: BLE001
+        report(False, name, e)
+
+
+def aspnet():
+    name = "ASP.NET Core: the README's website, as printed, asked for /invoice"
+    try:
+        root, env = workspace()
+        app = website(root, env)
         run(["dotnet", "publish", "-c", "Release", "-o", str(app / "publish")], app, env)
         port = free_port()
-        server = subprocess.Popen(["dotnet", "MyApp.dll", "--urls", f"http://127.0.0.1:{port}"], cwd=app / "publish", env=env,
+        server = subprocess.Popen(["dotnet", "InvoiceSite.dll", "--urls", f"http://127.0.0.1:{port}"], cwd=app / "publish", env=env,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         try:
             body = b""
@@ -241,22 +261,16 @@ def publish():
 
 def rotativa():
     """Rotativa.AspNetCore 1.5.0 with the README's two lines: ViewAsPdf makes the PDF."""
-    name = "Rotativa.AspNetCore: the README's two lines, then ViewAsPdf"
+    name = "Rotativa.AspNetCore: the README's Program.cs and HomeController.cs, then /Home/Invoice"
     try:
         root, env = workspace()
         run(["dotnet", "new", "mvc", "-f", "net8.0", "-o", "Shop"], root, env)
         app = root / "Shop"
         run(["dotnet", "add", "package", "Rotativa.AspNetCore", "--version", "1.5.0"], app, env)
         run(["dotnet", "add", "package", "Marqius.Wkhtmltopdf"], app, env)
-        program = (app / "Program.cs").read_text(encoding="utf-8")
-        anchor = "var app = builder.Build();\n"
-        assert program.count(anchor) == 1, "the mvc template changed"
-        program = "using Rotativa.AspNetCore;\n" + program.replace(anchor, anchor + example("src/Marqius.Wkhtmltopdf/README.md", "rotativa setup"))
-        (app / "Program.cs").write_text(program, encoding="utf-8")
-        controller = app / "Controllers" / "HomeController.cs"
-        source = controller.read_text(encoding="utf-8")
-        source = "using Rotativa.AspNetCore;\n" + source.replace("    public IActionResult Privacy()", "    public IActionResult Invoice() => new ViewAsPdf(\"Index\");\n\n    public IActionResult Privacy()", 1)
-        controller.write_text(source, encoding="utf-8")
+        # the README's two files, as printed
+        (app / "Program.cs").write_text(example("src/Marqius.Wkhtmltopdf/README.md", "rotativa Program.cs"), encoding="utf-8")
+        (app / "Controllers" / "HomeController.cs").write_text(example("src/Marqius.Wkhtmltopdf/README.md", "rotativa HomeController.cs"), encoding="utf-8")
         run(["dotnet", "publish", "-c", "Release", "-o", str(app / "publish")], app, env)
         port = free_port()
         server = subprocess.Popen(["dotnet", "Shop.dll", "--urls", f"http://127.0.0.1:{port}"], cwd=app / "publish", env=env,
@@ -370,7 +384,7 @@ File.WriteAllBytes("invoice.pdf", pdf);
             report(False, name, e)
 
 
-CHECKS = {"quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
+CHECKS = {"settings": settings, "quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
           "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot}
 
 if __name__ == "__main__":
