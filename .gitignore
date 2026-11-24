@@ -1,0 +1,9 @@
+bin/
+obj/
+dist/
+builds/
+*.nupkg
+*.snupkg
+.vs/
+TestResults/
+out/

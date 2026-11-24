@@ -1,0 +1,28 @@
+<Project>
+  <!-- Marqius.Wkhtmltopdf: the program for Windows, Linux and macOS lives in runtimes/<rid>/native/.
+       A .NET (Core) build copies it from there by itself: beside the app for one runtime, in the
+       app's runtimes folder for all of them. Two cases need a hand. -->
+
+  <!-- .NET Framework apps copy no runtimes/ files: put the Windows program beside the app -->
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">
+    <None Include="$(MSBuildThisFileDirectory)../runtimes/win-x64/native/marqius-wkhtmltopdf.exe"
+          Link="marqius-wkhtmltopdf.exe" CopyToOutputDirectory="PreserveNewest" Visible="false" />
+  </ItemGroup>
+
+  <!-- On Linux and macOS, NuGet does not keep the execute permission: give it back where the program
+       lands, so a container image or a server gets a program it can run (the package also does it,
+       or makes a runnable copy, at first use) -->
+  <Target Name="MarqiusWkhtmltopdfExecutableAfterBuild" AfterTargets="CopyFilesToOutputDirectory" Condition="'$(OS)' != 'Windows_NT'">
+    <ItemGroup>
+      <_MarqiusWkhtmltopdfProgram Include="$(OutDir)marqius-wkhtmltopdf;$(OutDir)runtimes/*/native/marqius-wkhtmltopdf" />
+    </ItemGroup>
+    <Exec Command="chmod +x &quot;%(_MarqiusWkhtmltopdfProgram.FullPath)&quot;" Condition="Exists('%(_MarqiusWkhtmltopdfProgram.FullPath)')" ContinueOnError="true" StandardOutputImportance="low" />
+  </Target>
+
+  <Target Name="MarqiusWkhtmltopdfExecutableAfterPublish" AfterTargets="Publish" Condition="'$(OS)' != 'Windows_NT'">
+    <ItemGroup>
+      <_MarqiusWkhtmltopdfPublished Include="$(PublishDir)marqius-wkhtmltopdf;$(PublishDir)runtimes/*/native/marqius-wkhtmltopdf" />
+    </ItemGroup>
+    <Exec Command="chmod +x &quot;%(_MarqiusWkhtmltopdfPublished.FullPath)&quot;" Condition="Exists('%(_MarqiusWkhtmltopdfPublished.FullPath)')" ContinueOnError="true" StandardOutputImportance="low" />
+  </Target>
+</Project>

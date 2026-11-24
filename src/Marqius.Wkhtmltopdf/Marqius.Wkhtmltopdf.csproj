@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <PackageId>Marqius.Wkhtmltopdf</PackageId>
+    <AssemblyName>Marqius.Wkhtmltopdf</AssemblyName>
+    <RootNamespace>Marqius.Wkhtmltopdf</RootNamespace>
+    <Title>marqius-wkhtmltopdf: the maintained drop-in replacement for wkhtmltopdf</Title>
+    <Description>marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf, for Windows, Linux and macOS in one package. Wkhtmltopdf.Path gives the program's path for Rotativa, NReco.PdfGenerator, Wkhtmltopdf.NetCore or any library that runs wkhtmltopdf; Marqius.DinkToPdf builds on it for DinkToPdf's API. Same options and output as wkhtmltopdf 0.12.6, with no Qt, no libwkhtmltox and no X server. Commercial, with a 30-day free trial; free for personal, teaching and open-source use.</Description>
+    <PackageTags>wkhtmltopdf;wkhtmltoimage;html-to-pdf;pdf;html;rotativa;nreco;libwkhtmltox;marqius</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <!-- the program is the package: no lib folder warning for a package that is mostly native files -->
+    <NoWarn>$(NoWarn);NU5100;NU5129</NoWarn>
+    <!-- where build.py laid out the checked programs: runtimes/<rid>/native/ and Builds.cs -->
+    <MarqiusBuilds Condition="'$(MarqiusBuilds)' == ''">$(MSBuildThisFileDirectory)../../builds/</MarqiusBuilds>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- each program as GitHub's release workflow built it, checked by build.py against its SHA-256 and provenance -->
+    <None Include="$(MarqiusBuilds)runtimes/**/*" Pack="true" PackagePath="runtimes/" Visible="false" />
+    <None Include="build/Marqius.Wkhtmltopdf.targets" Pack="true" PackagePath="build/;buildTransitive/" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE.md" Pack="true" PackagePath="/" />
+    <None Include="../../icon.png" Pack="true" PackagePath="/" Condition="Exists('../../icon.png')" />
+  </ItemGroup>
+
+  <!-- the version and each program's SHA-256, written by build.py; a build without them checks no digest -->
+  <ItemGroup Condition="Exists('$(MarqiusBuilds)Builds.cs')">
+    <Compile Include="$(MarqiusBuilds)Builds.cs" Link="Builds.cs" />
+    <Compile Remove="Builds.Dev.cs" />
+  </ItemGroup>
+
+</Project>
