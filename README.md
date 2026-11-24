@@ -239,14 +239,13 @@ On a Debian or Ubuntu server, this installs the fonts for all the languages abov
 sudo apt-get install -y fonts-noto-core fonts-noto-cjk
 ```
 
-## Licence and trial
+## Licence
 
-marqius-wkhtmltopdf is commercial software with a 30-day free trial.
-- **After the trial,** without a licence, each page gets one small line: "Prepared by Marqius, Purchase Licence". Your PDFs never stop.
+marqius-wkhtmltopdf has two licences.
 - **Personal, teaching and open-source use** is free with a Community licence.
+- **Anything done by or for a business** needs a commercial licence.
+  [See the plans](https://marqius.com/wkhtmltopdf-buy/).
 - **To use a licence,** set the environment variable `MARQIUS_LICENCE` to the licence, or to the path of a file that holds it.
-
-[See the plans and prices](https://marqius.com/licence/marqius-wkhtmltopdf).
 
 ## Questions
 
