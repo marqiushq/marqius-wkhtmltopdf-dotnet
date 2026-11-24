@@ -32,6 +32,14 @@ on:
         description: "Test on GitHub's macOS too (off only while GitHub has no Mac to give, and the Mac was tested elsewhere)"
         type: boolean
         default: true
+      listing_only:
+        description: "Only the listing changed (READMEs, pictures, title, description, tags, notes): one Linux check, about 2 minutes. Refused when code changed since the last release tag"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Everything but the upload to nuget.org (and its tag and provenance)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -71,9 +79,29 @@ jobs:
           echo "nuget.org has ${have:-nothing}, latest release $latest: publish=$publish package=$package"
           printf 'publish=%s\nversion=%s\npackage=%s\n' "$publish" "$latest" "$package" >>"$GITHUB_OUTPUT"
 
-  build:
+  # nuget.org's sign-in, first: a policy that does not match fails here, in a minute, with what to
+  # fix, not after the tests
+  signin:
     needs: follow
-    if: needs.follow.outputs.publish == 'true'
+    if: needs.follow.outputs.publish == 'true' && vars.PUBLISHING == 'on' && !github.event.repository.private
+    runs-on: ubuntu-24.04
+    environment: nuget
+    permissions:
+      id-token: write
+    steps:
+      - name: nuget.org's sign-in, from this workflow's GitHub sign-in
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: What to fix on nuget.org
+        if: failure()
+        run: |
+          echo "::error title=nuget.org refused the sign-in::On nuget.org, Trusted Publishing needs a policy created by the account in NUGET_USER (${{ vars.NUGET_USER }}): package owner marqius, repository owner marqiushq, repository marqius-wkhtmltopdf-dotnet, workflow release.yml, environment nuget. NUGET_USER must be the account that created the policy, not its owner."
+          exit 1
+
+  build:
+    needs: [follow, signin]
+    if: ${{ !failure() && !cancelled() && needs.follow.outputs.publish == 'true' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,6 +120,7 @@ jobs:
 
   test:
     needs: build
+    if: ${{ !inputs.listing_only }}
     name: test (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -120,6 +149,9 @@ jobs:
       - name: DinkToPdf 1.0.8's whole API, unchanged, in these very packages (tests/api.py)
         if: matrix.os == 'ubuntu-24.04'
         run: python tests/api.py
+      - name: The nuget.org listing, checked (tests/listing.py)
+        if: matrix.os == 'ubuntu-24.04'
+        run: python tests/listing.py
       - name: As a developer does it, from these very packages
         if: matrix.os != 'macos-15' || inputs.macos != false
         shell: bash
@@ -129,13 +161,40 @@ jobs:
           python tests/customer.py $checks
 
   compat:
-    needs: follow
-    if: needs.follow.outputs.publish == 'true'
+    needs: [follow, signin]
+    if: ${{ !failure() && !cancelled() && needs.follow.outputs.publish == 'true' && !inputs.listing_only }}
     uses: ./.github/workflows/compat.yml
 
+  # a listing-only release: no code changed since the last release tag, so one Linux machine checks
+  # the listing, DinkToPdf's API and help, and the READMEs' first examples, and the release goes on
+  quick:
+    needs: [follow, build]
+    if: ${{ !failure() && !cancelled() && inputs.listing_only }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: packages
+          path: dist
+      - name: Only the listing changed since the last release, and the listing is right
+        run: python tests/listing.py --guard "$(git describe --tags --abbrev=0 --match 'v*')"
+      - name: DinkToPdf 1.0.8's whole API, and the help while typing
+        run: python tests/api.py
+      - name: The READMEs' first examples, as printed
+        run: python tests/customer.py quickstart
+
   publish:
-    needs: [follow, test, compat]
-    if: vars.PUBLISHING == 'on' && !github.event.repository.private
+    needs: [follow, signin, test, compat, quick]
+    if: ${{ !failure() && !cancelled() && needs.follow.outputs.publish == 'true' && vars.PUBLISHING == 'on' && !github.event.repository.private }}
     runs-on: ubuntu-24.04
     environment: nuget
     permissions:
@@ -151,7 +210,12 @@ jobs:
         with:
           name: packages
           path: dist
+      - name: A dry run publishes nothing
+        if: inputs.dry_run
+        run: |
+          echo "::notice::Dry run - tested and signed in, nothing uploaded to nuget.org"
       - name: GitHub's build provenance for each package
+        if: ${{ !inputs.dry_run }}
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: dist/*.nupkg
@@ -161,6 +225,7 @@ jobs:
         with:
           user: ${{ vars.NUGET_USER }}
       - name: Publish (the program package first, then the one that needs it)
+        if: ${{ !inputs.dry_run }}
         env:
           NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
@@ -168,6 +233,7 @@ jobs:
             dotnet nuget push "$p" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
       - name: Tag the packages' version
+        if: ${{ !inputs.dry_run }}
         # GitHub refuses this token a tag on a commit whose workflow files differ from the branch's
         # newest: then the packages are out all the same, and the check from nuget.org still runs
         continue-on-error: true
@@ -180,6 +246,7 @@ jobs:
 
   live:
     needs: [follow, publish]
+    if: ${{ !inputs.dry_run }}
     name: from nuget.org (${{ matrix.os }})
     strategy:
       fail-fast: false
