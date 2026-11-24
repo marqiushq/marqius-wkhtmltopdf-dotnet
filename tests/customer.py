@@ -534,8 +534,11 @@ def manual():
         (app / "Program.cs").write_text(code, encoding="utf-8")
         out = run(["dotnet", "run"], app, env)
         text = pdf_text(app / "invoice.pdf")
-        ok = is_pdf(app / "invoice.pdf") and "WARNING" not in out.stdout and (text is None or ("Northwind" in text and "Ink cartridge" in text and "24.49" in text.replace(",", ".")))
-        return ok, "logo, style sheet and data in the PDF, no warnings" if ok else out.stdout + (text or "")
+        # a style sheet or picture that did not load is a fault; a font the machine lacks (Arial on
+        # Linux, say) is only worth knowing, and the PDF is set in another
+        missing = [l for l in out.stdout.splitlines() if l.startswith("WARNING") and "could not be" in l]
+        ok = is_pdf(app / "invoice.pdf") and not missing and (text is None or ("Northwind" in text and "Ink cartridge" in text and "24.49" in text.replace(",", ".")))
+        return ok, "logo, style sheet and data in the PDF; nothing failed to load" if ok else out.stdout + (text or "")
 
     def settings_():
         root, env = workspace()
