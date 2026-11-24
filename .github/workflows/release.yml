@@ -168,9 +168,15 @@ jobs:
             dotnet nuget push "$p" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
       - name: Tag the packages' version
+        # GitHub refuses this token a tag on a commit whose workflow files differ from the branch's
+        # newest: then the packages are out all the same, and the check from nuget.org still runs
+        continue-on-error: true
         run: |
           git tag "v${{ needs.follow.outputs.package }}"
-          git push origin "v${{ needs.follow.outputs.package }}"
+          if ! git push origin "v${{ needs.follow.outputs.package }}"; then
+            echo "::warning::Tag v${{ needs.follow.outputs.package }} by hand on ${{ github.sha }}: GitHub refused it to this workflow's token"
+            exit 1
+          fi
 
   live:
     needs: [follow, publish]
