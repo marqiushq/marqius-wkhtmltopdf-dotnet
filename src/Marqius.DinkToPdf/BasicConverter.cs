@@ -38,11 +38,13 @@ namespace DinkToPdf
         public event EventHandler<WarningArgs> Warning;
 
         /// <summary>A converter that works through these tools: <c>new BasicConverter(new PdfTools())</c>.</summary>
+        /// <param name="tools">The tools to work through: <c>new PdfTools()</c>.</param>
         public BasicConverter(ITools tools) {
             Tools = tools;
         }
 
         /// <summary>Converts the document: the PDF's bytes, or an empty array when it could not be made (the <see cref="Error"/> event says why). With <see cref="GlobalSettings.Out"/> set, the PDF is written to that file, and the array is empty.</summary>
+        /// <param name="document">The document to convert: its settings for the whole PDF, and its pages.</param>
         public virtual byte[] Convert(IDocument document)
         {
             if (document.GetObjects().Count() == 0)

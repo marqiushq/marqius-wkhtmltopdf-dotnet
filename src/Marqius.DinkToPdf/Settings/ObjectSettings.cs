@@ -10,6 +10,11 @@ namespace DinkToPdf
     /// <summary>One page of HTML in the PDF: HTML you give (<see cref="HtmlContent"/>) or a web address or file (<see cref="Page"/>), with how it looks, its header and footer, and how it loads.</summary>
     public class ObjectSettings : IObject
     {
+        /// <summary>One page of the PDF: set <see cref="HtmlContent"/> to your HTML, or <see cref="Page"/> to a web address or file.</summary>
+        public ObjectSettings()
+        {
+        }
+
         /// <summary>
         /// The URL or path of the web page to convert, if "-" input is read from stdin. Default = ""
         /// </summary>

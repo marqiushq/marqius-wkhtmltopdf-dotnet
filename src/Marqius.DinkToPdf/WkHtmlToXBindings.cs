@@ -13,6 +13,7 @@ namespace DinkToPdf
     /// loaded. Text and output given back as pointers stay valid until the converter is destroyed (the
     /// version's, for as long as the app runs).
     /// </summary>
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)] // kept for code that calls it; not offered to new code
     public unsafe static class WkHtmlToXBindings
     {
         private static readonly PdfTools Tools = new PdfTools();

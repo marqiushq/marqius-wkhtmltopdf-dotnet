@@ -20,6 +20,11 @@ namespace DinkToPdf
     /// <summary>How a page is loaded: sign-in, cookies, headers, scripts' time, zoom, files on this computer.</summary>
     public class LoadSettings : ISettings
     {
+        /// <summary>How a page is loaded (cookies, headers, load errors, zoom), none set yet: each one left unset keeps its default.</summary>
+        public LoadSettings()
+        {
+        }
+
         /// <summary>
         /// The user name to use when loging into a website. Default = ""
         /// </summary>
@@ -74,9 +79,7 @@ namespace DinkToPdf
         [WkHtml("load.proxy")]
         public string Proxy { get; set; }
 
-        /// <summary>
-        /// Custom headers used when requesting page. Defaulty = empty
-        /// </summary>
+        /// <summary>Extra HTTP headers sent when the page is requested, by name and value, such as an Authorization header (with <see cref="RepeatCustomHeaders"/> = true, also for its pictures and style sheets). Default = empty</summary>
         [WkHtml("load.customHeaders")]
         public Dictionary<string, string> CustomHeaders { get; set; }
 
@@ -86,9 +89,7 @@ namespace DinkToPdf
         [WkHtml("load.repeatCustomHeaders")]
         public bool? RepeatCustomHeaders { get; set; }
 
-        /// <summary>
-        /// Cookies used when requesting page. Default = empty
-        /// </summary>
+        /// <summary>Cookies sent when the page is requested, by name and value. Default = empty</summary>
         [WkHtml("load.cookies")]
         public Dictionary<string, string> Cookies { get; set; }
     }

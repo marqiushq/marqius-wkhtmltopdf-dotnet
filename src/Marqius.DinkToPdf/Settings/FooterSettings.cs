@@ -9,6 +9,11 @@ namespace DinkToPdf
     /// <summary>A line of text, or a page of HTML, at the foot of every page. Text may hold [page], [topage], [date], [title] and the like.</summary>
     public class FooterSettings : ISettings
     {
+        /// <summary>A page's footer, empty until a part of it is set.</summary>
+        public FooterSettings()
+        {
+        }
+
         /// <summary>
         /// The font size to use for the footer. Default = 12
         /// </summary>
@@ -51,9 +56,7 @@ namespace DinkToPdf
         [WkHtml("footer.spacing")]
         public double? Spacing { get; set; }
 
-        /// <summary>
-        /// Url for a HTML document to use for the footer. Default = ""
-        /// </summary>
+        /// <summary>The web address or file path of an HTML page to use as each page's footer, such as "footer.html" (a relative path is from the app's current folder). Default = "" (none)</summary>
         [WkHtml("footer.htmlUrl")]
         public string HtmUrl { get; set; }
     }

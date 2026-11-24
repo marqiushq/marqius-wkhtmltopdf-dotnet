@@ -31,6 +31,10 @@ namespace DinkToPdf
         }
 
         /// <summary>The four margins in millimetres, in CSS's order: top, right, bottom, left.</summary>
+        /// <param name="top">The top margin, in millimetres.</param>
+        /// <param name="right">The right margin, in millimetres.</param>
+        /// <param name="bottom">The bottom margin, in millimetres.</param>
+        /// <param name="left">The left margin, in millimetres.</param>
         public MarginSettings(double top, double right, double bottom, double left) : this()
         {
             Top = top;
@@ -43,6 +47,7 @@ namespace DinkToPdf
         }
 
         /// <summary>A margin as the program reads it, such as "10mm" (null when not set).</summary>
+        /// <param name="value">The margin, in <see cref="Unit"/>, or null.</param>
         public string GetMarginValue(double? value)
         {
             if (!value.HasValue)

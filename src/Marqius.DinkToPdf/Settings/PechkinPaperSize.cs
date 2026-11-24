@@ -118,6 +118,8 @@ namespace DinkToPdf
         };
 
         /// <summary>A paper size of your own: <c>new PechkinPaperSize("100mm", "150mm")</c>.</summary>
+        /// <param name="width">The width with its unit (mm, cm, in), such as "100mm".</param>
+        /// <param name="height">The height with its unit (mm, cm, in), such as "150mm".</param>
         public PechkinPaperSize(string width, string height)
         {
             this.Width = width;
@@ -131,6 +133,7 @@ namespace DinkToPdf
         public string Width { get; set; }
 
         /// <summary>The size of a standard paper: <c>PaperSize = PaperKind.A4</c>.</summary>
+        /// <param name="paperKind">The standard paper, such as <c>PaperKind.A4</c> or <c>PaperKind.Letter</c>.</param>
         public static implicit operator PechkinPaperSize(PaperKind paperKind)
         {
             return dictionary[paperKind];

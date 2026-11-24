@@ -9,6 +9,11 @@ namespace DinkToPdf.EventDefinitions
     /// <summary>Something worth knowing that did not stop the PDF.</summary>
     public class WarningArgs : EventArgs
     {
+        /// <summary>A warning, as the converter gives it to the Warning event.</summary>
+        public WarningArgs()
+        {
+        }
+
         /// <summary>The document being converted.</summary>
         public IDocument Document { get; set; }
 

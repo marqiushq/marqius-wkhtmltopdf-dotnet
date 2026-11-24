@@ -9,6 +9,11 @@ namespace DinkToPdf.EventDefinitions
     /// <summary>A conversion's next phase.</summary>
     public class PhaseChangedArgs : EventArgs
     {
+        /// <summary>A new phase, as the converter gives it to the PhaseChanged event.</summary>
+        public PhaseChangedArgs()
+        {
+        }
+
         /// <summary>The document being converted.</summary>
         public IDocument Document { get; set; }
 

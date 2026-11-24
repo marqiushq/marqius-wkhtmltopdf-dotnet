@@ -9,6 +9,11 @@ namespace DinkToPdf.EventDefinitions
     /// <summary>How far a conversion has got.</summary>
     public class ProgressChangedArgs : EventArgs
     {
+        /// <summary>Progress, as the converter gives it to the ProgressChanged event.</summary>
+        public ProgressChangedArgs()
+        {
+        }
+
         /// <summary>The document being converted.</summary>
         public IDocument Document { get; set; }
 

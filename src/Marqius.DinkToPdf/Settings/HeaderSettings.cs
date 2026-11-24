@@ -9,6 +9,11 @@ namespace DinkToPdf
     /// <summary>A line of text, or a page of HTML, at the top of every page. Text may hold [page], [topage], [date], [title] and the like.</summary>
     public class HeaderSettings : ISettings
     {
+        /// <summary>A page's header, empty until a part of it is set.</summary>
+        public HeaderSettings()
+        {
+        }
+
         /// <summary>
         /// The font size to use for the header. Default = 12
         /// </summary>
@@ -51,9 +56,7 @@ namespace DinkToPdf
         [WkHtml("header.spacing")]
         public double? Spacing { get; set; }
 
-        /// <summary>
-        /// Url for a HTML document to use for the header. Default = ""
-        /// </summary>
+        /// <summary>The web address or file path of an HTML page to use as each page's header, such as "header.html" (a relative path is from the app's current folder). Default = "" (none)</summary>
         [WkHtml("header.htmlUrl")]
         public string HtmUrl { get; set; }
     }

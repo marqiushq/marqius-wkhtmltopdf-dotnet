@@ -68,6 +68,7 @@ namespace Marqius.Wkhtmltopdf
         /// A start for the program with these arguments: no shell, standard input, output and error
         /// redirected, and a font cache it can keep (see <see cref="CacheFolder"/>).
         /// </summary>
+        /// <param name="arguments">wkhtmltopdf's arguments, one item each, such as <c>new[] { "--page-size", "A4", "invoice.html", "invoice.pdf" }</c>.</param>
         public static ProcessStartInfo StartInfo(IEnumerable<string> arguments)
         {
             var start = new ProcessStartInfo
@@ -107,6 +108,7 @@ namespace Marqius.Wkhtmltopdf
         /// already there is kept beside them as wkhtmltopdf.before-marqius. Does nothing when the
         /// names are there already for this version.
         /// </summary>
+        /// <param name="folder">The folder to put the names in, such as <c>wwwroot/Rotativa</c>. It is made when it is not there.</param>
         /// <returns>The path of the name wkhtmltopdf in that folder.</returns>
         public static string Install(string folder)
         {
@@ -153,6 +155,7 @@ namespace Marqius.Wkhtmltopdf
         }
 
         /// <summary>Quotes arguments for a command line, as Windows programs and .NET read them.</summary>
+        /// <param name="arguments">The arguments, one item each.</param>
         public static string JoinArguments(IEnumerable<string> arguments)
         {
             var line = new StringBuilder();

@@ -19,12 +19,14 @@ namespace DinkToPdf
         private readonly object startLock = new object();
 
         /// <summary>A converter for the whole app: <c>new SynchronizedConverter(new PdfTools())</c>.</summary>
+        /// <param name="tools">The tools to work through: <c>new PdfTools()</c>.</param>
         public SynchronizedConverter(ITools tools) : base(tools)
         {
 
         }
 
         /// <summary>Converts the document: the PDF's bytes, or an empty array when it could not be made (the Error event says why).</summary>
+        /// <param name="document">The document to convert: its settings for the whole PDF, and its pages.</param>
         public override byte[] Convert(IDocument document)
         {
             // marqius-wkhtmltopdf runs each conversion as a process of its own, so PdfTools needs no
@@ -38,6 +40,8 @@ namespace DinkToPdf
         }
 
         /// <summary>Runs a call on the converter's own thread, as DinkToPdf did for libwkhtmltox. Not needed with <see cref="PdfTools"/>.</summary>
+        /// <typeparam name="TResult">What the call gives back.</typeparam>
+        /// <param name="delegate">The call to run.</param>
         public TResult Invoke<TResult>(Func<TResult> @delegate)
         {
             StartThread();

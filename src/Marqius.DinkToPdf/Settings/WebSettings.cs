@@ -9,6 +9,11 @@ namespace DinkToPdf
     /// <summary>How a page looks: backgrounds, pictures, scripts, print styles, text encoding, smallest font size.</summary>
     public class WebSettings : ISettings
     {
+        /// <summary>How a page is shown (pictures, scripts, print styles), none set yet: each one left unset keeps its default.</summary>
+        public WebSettings()
+        {
+        }
+
         /// <summary>
         /// Should we print the background. Default = true
         /// </summary>
@@ -33,9 +38,7 @@ namespace DinkToPdf
         [WkHtml("web.enableIntelligentShrinking")]
         public bool? EnableIntelligentShrinking { get; set; }
 
-        /// <summary>
-        /// The minimum font size allowed. Default = -1
-        /// </summary>
+        /// <summary>The smallest font size allowed; -1 means no minimum. Default = -1</summary>
         [WkHtml("web.minimumFontSize")]
         public int? MinimumFontSize { get; set; }
 
@@ -51,9 +54,7 @@ namespace DinkToPdf
         [WkHtml("web.defaultEncoding")]
         public string DefaultEncoding { get; set; }
 
-        /// <summary>
-        /// Url or path to a user specified style sheet. Default = ""
-        /// </summary>
+        /// <summary>The web address or file path of an extra style sheet for the page, such as "print.css" (a relative path is from the app's current folder). Default = "" (none)</summary>
         [WkHtml("web.userStyleSheet")]
         public string UserStyleSheet { get; set; }
 

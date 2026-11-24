@@ -27,6 +27,11 @@ namespace DinkToPdf
     /// <summary>Settings for the whole PDF: paper size, orientation, margins, colour, outline, title.</summary>
     public class GlobalSettings : ISettings
     {
+        /// <summary>Settings for the whole PDF, none set yet: each one left unset keeps its default.</summary>
+        public GlobalSettings()
+        {
+        }
+
         
 
         private MarginSettings margins = new MarginSettings();
@@ -121,9 +126,7 @@ namespace DinkToPdf
         [WkHtml("load.cookieJar")]
         public string CookieJar { get; set; }
 
-        /// <summary>
-        /// Size of output paper
-        /// </summary>
+        /// <summary>The paper size: a <see cref="PaperKind"/> such as <c>PaperKind.A4</c> or <c>PaperKind.Letter</c>, or <c>new PechkinPaperSize("210mm", "297mm")</c> for a size of your own. Default = A4</summary>
         public PechkinPaperSize PaperSize { get; set; }
 
         /// <summary>

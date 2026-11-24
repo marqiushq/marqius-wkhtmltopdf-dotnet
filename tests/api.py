@@ -13,6 +13,10 @@ assembly's public and protected API, a line per type and member. The check fails
   - the assembly is not "DinkToPdf", unsigned, at version 1.0.8.0 or above, which is what lets code
     built against DinkToPdf 1.0.8 load it.
 Anything Marqius.DinkToPdf adds lives in the namespace Marqius.DinkToPdf, which no existing code imports.
+
+It also checks the help an editor shows while you type (IntelliSense), in both packages and for each
+framework: every public type and member has a summary of its own (no <inheritdoc/>), and every
+parameter and type parameter has its help.
 """
 import hashlib
 import os
@@ -62,7 +66,13 @@ def main():
         frameworks = sorted({n.split("/")[1] for n in z.namelist() if n.startswith("lib/") and n.endswith("/DinkToPdf.dll")})
         for fw in frameworks:
             (work / fw).mkdir()
-            (work / fw / "DinkToPdf.dll").write_bytes(z.read(f"lib/{fw}/DinkToPdf.dll"))
+            for f in ("DinkToPdf.dll", "DinkToPdf.xml"):
+                (work / fw / f).write_bytes(z.read(f"lib/{fw}/{f}"))
+    program = [p for p in sorted((HERE / "dist").glob("Marqius.Wkhtmltopdf.*.nupkg")) if not p.name.endswith(".snupkg")]
+    with zipfile.ZipFile(program[-1]) as z:
+        for fw in frameworks:
+            for f in ("Marqius.Wkhtmltopdf.dll", "Marqius.Wkhtmltopdf.xml"):
+                (work / fw / f).write_bytes(z.read(f"lib/{fw}/{f}"))
     for fw in frameworks:
         ident, have = api(lister, work / fw / "DinkToPdf.dll")
         have = set(have)
@@ -82,7 +92,16 @@ def main():
                      + ("<br>".join(e.strip() for e in extras) or "none") + " | " + ("**FAIL**: " + "<br>".join(problems) if problems else "pass") + " |")
         for p in problems:
             print(f"FAIL\t{fw}\t{p}")
-    table = ["### Marqius.DinkToPdf beside DinkToPdf 1.0.8's API", "",
+    # the help an editor shows while typing, in both packages
+    for fw in frameworks:
+        for name in ("DinkToPdf", "Marqius.Wkhtmltopdf"):
+            c = subprocess.run(["dotnet", str(lister), "docs", str(work / fw / f"{name}.dll"), str(work / fw / f"{name}.xml")], capture_output=True, text=True)
+            said = c.stdout.strip().splitlines()
+            for line in said[:-1]:
+                print(f"FAIL\t{fw}\thelp: {line}")
+            failures += 0 if c.returncode == 0 else 1
+            lines.append(f"| {fw} | {name} | help while typing | {said[-1] if said else c.stderr.strip()[-200:]} | {'pass' if c.returncode == 0 else '**FAIL**'} |")
+    table = ["### Marqius.DinkToPdf beside DinkToPdf 1.0.8's API, and the help while typing", "",
              f"DinkToPdf 1.0.8 from nuget.org (SHA-256 {digest[:16]}…), {identity.split()[1]} {identity.split()[2]}.", "",
              "| Framework | Assembly | DinkToPdf's API | Added (outside DinkToPdf's namespaces, or allowed) | Verdict |", "|---|---|---|---|---|"] + lines
     print("\n".join(table))

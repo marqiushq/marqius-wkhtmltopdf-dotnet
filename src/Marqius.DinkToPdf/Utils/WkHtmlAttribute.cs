@@ -13,6 +13,7 @@ namespace DinkToPdf
         public string Name { get; private set; }
 
         /// <summary>The setting this property sets, by its libwkhtmltox name.</summary>
+        /// <param name="name">The setting's libwkhtmltox name, such as "web.loadImages".</param>
         public WkHtmlAttribute(string name)
         {
             Name = name;

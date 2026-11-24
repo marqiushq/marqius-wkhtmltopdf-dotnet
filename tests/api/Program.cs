@@ -4,6 +4,13 @@ using System.Runtime.Loader;
 // dotnet ApiList.dll ASSEMBLY: the assembly's identity on the first line, then every public (and
 // protected) type and member, one line each, sorted. Names carry no assembly versions, so two builds
 // of one API print the same lines.
+//
+// dotnet ApiList.dll docs ASSEMBLY HELP.xml: the help an editor shows while you type (IntelliSense),
+// checked for every public and protected type and member: a summary with words in it, its own text
+// (no <inheritdoc/>, which some editors leave blank), a <param> for every parameter and a <typeparam>
+// for every type parameter. Prints each gap and exits 1 when there is one.
+if (args.Length == 3 && args[0] == "docs")
+    return Docs.Check(args[1], args[2]);
 var path = Path.GetFullPath(args[0]);
 var context = new AssemblyLoadContext("api", isCollectible: true);
 context.Resolving += (c, name) =>
@@ -56,6 +63,7 @@ foreach (var t in asm.GetExportedTypes())
 }
 foreach (var line in lines.OrderBy(x => x, StringComparer.Ordinal))
     Console.WriteLine(line);
+return 0;
 
 static bool Visible(MemberInfo m) => m switch
 {

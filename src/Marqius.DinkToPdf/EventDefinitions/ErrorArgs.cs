@@ -9,6 +9,11 @@ namespace DinkToPdf.EventDefinitions
     /// <summary>What stopped a PDF from being made.</summary>
     public class ErrorArgs : EventArgs
     {
+        /// <summary>An error, as the converter gives it to the Error event.</summary>
+        public ErrorArgs()
+        {
+        }
+
         /// <summary>The document being converted.</summary>
         public IDocument Document { get; set; }
 
