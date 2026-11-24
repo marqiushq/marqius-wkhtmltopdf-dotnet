@@ -1,0 +1,88 @@
+name: Test
+
+# Both packages on GitHub's own machines, before anything is published: build.py takes the latest
+# release's programs (each checked against its SHA-256 and its GitHub build provenance) and packs them;
+# then the unit and conversion tests, and what a developer does as the READMEs print it, on Linux x64
+# and ARM64, Windows Server 2025 and 2022 and macOS; the README's Dockerfile on Debian and Alpine; and
+# a .NET Framework 4.8 app on Windows.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      macos:
+        description: "Test on GitHub's macOS too (off only while GitHub has no Mac to give)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm, windows-2025, windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: matrix.os != 'macos-15' || inputs.macos != false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        with:
+          python-version: "3.13"
+      - name: The latest release's programs, checked, in both packages
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python build.py "$(python .github/release.py latest)"
+      - name: Unit and conversion tests
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        run: dotnet test tests/Marqius.DinkToPdf.Tests -c Release --logger "console;verbosity=normal"
+      - name: As a developer does it, from the packages
+        if: matrix.os != 'macos-15' || inputs.macos != false
+        shell: bash
+        run: |
+          checks="quickstart dinktopdf-example aspnet"
+          case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
+          python tests/customer.py $checks | tee customer.txt
+          { echo "### ${{ matrix.os }}"; echo; echo "| Result | Check | Detail |"; echo "|---|---|---|"
+            sed -E 's/\|/\//g; s/^([^\t]*)\t([^\t]*)\t(.*)$/| \1 | \2 | \3 |/' customer.txt; } >> "$GITHUB_STEP_SUMMARY"
+          ! grep -q "^FAIL" customer.txt
+
+  docker:
+    name: Docker (the README's Dockerfile, Debian and Alpine)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: The latest release's programs, checked, in both packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python build.py "$(python .github/release.py latest)"
+      - name: The README's Dockerfile, with an ASP.NET Core app
+        run: |
+          python tests/docker.py | tee docker.txt
+          { echo "### Docker"; echo; echo "| Result | Check | Detail |"; echo "|---|---|---|"
+            sed -E 's/\|/\//g; s/^([^\t]*)\t([^\t]*)\t(.*)$/| \1 | \2 | \3 |/' docker.txt; } >> "$GITHUB_STEP_SUMMARY"
+          ! grep -q "^FAIL" docker.txt

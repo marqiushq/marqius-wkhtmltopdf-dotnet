@@ -1,0 +1,53 @@
+name: Beside DinkToPdf
+
+# The same documents (tests/compat/Cases.cs: every setting of DinkToPdf that changes a PDF) made by
+# DinkToPdf 1.0.8 with the libwkhtmltox 0.12.4 its repository carries, and by Marqius.DinkToPdf, on
+# Linux x64 and Windows, then compared by marqius-wkhtmltopdf compare. The verdicts are in the run's
+# summary; marked-up PDFs and page pictures of any difference are kept as an artifact for a week.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compat-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compat:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 8.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: libwkhtmltox's system libraries, and fonts both sides use
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libx11-6 libxext6 libxrender1 libfontconfig1 libfreetype6 fonts-liberation fonts-dejavu-core
+      - name: The latest release's programs, checked, in both packages
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python build.py "$(python .github/release.py latest)"
+      - name: The same documents, by DinkToPdf with libwkhtmltox and by Marqius.DinkToPdf, compared
+        run: python tests/compat.py compat-out
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: compat-${{ matrix.os }}
+          path: compat-out
+          retention-days: 7

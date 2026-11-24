@@ -112,7 +112,11 @@ namespace DinkToPdf
                 Message = message
             };
 
-            Error?.Invoke(this, eventArgs);
+            var handlers = Error;
+            if (handlers != null)
+                handlers(this, eventArgs);
+            else
+                Unheard("error", message);
         }
 
         private void OnWarning(IntPtr converter, string message, IDocument document)
@@ -123,7 +127,25 @@ namespace DinkToPdf
                 Message = message
             };
 
-            Warning?.Invoke(this, eventArgs);
+            var handlers = Warning;
+            if (handlers != null)
+                handlers(this, eventArgs);
+            else
+                Unheard("warning", message);
+        }
+
+        // marqius: an error or warning no handler takes goes to standard error, as wkhtmltopdf's own
+        // messages do, so a server's log shows why a PDF was not made (no fonts, a page not found)
+        private static void Unheard(string kind, string message)
+        {
+            try
+            {
+                Console.Error.WriteLine($"DinkToPdf ({kind}): {message}");
+            }
+            catch (Exception)
+            {
+                // no standard error to write to
+            }
         }
 
         private IntPtr CreateConverter(IDocument document) {
