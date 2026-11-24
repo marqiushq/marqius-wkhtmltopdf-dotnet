@@ -169,7 +169,7 @@ namespace Marqius.DinkToPdf.Tests
             tools.Load();
             Assert.True(tools.IsLoaded);
             Assert.True(tools.ExtendedQt());
-            Assert.StartsWith("0.12.6 (marqius-wkhtmltopdf ", tools.GetLibraryVersion());
+            Assert.Equal("0.12.6", tools.GetLibraryVersion()); // a plain version number, as libwkhtmltox gave
         }
     }
 }

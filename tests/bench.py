@@ -44,7 +44,7 @@ def size(path):
 
 
 def run_json(cmd, cwd, env):
-    p = customer.run(cmd, cwd, env, timeout=1800)
+    p = customer.run(cmd, cwd, env, timeout=300)
     line = [l for l in p.stdout.splitlines() if l.startswith("{")][-1]
     return json.loads(line)
 

@@ -5,7 +5,7 @@
 **Marqius.DinkToPdf turns HTML into PDF in .NET, with the same code as DinkToPdf.** It has DinkToPdf's classes and settings, but it needs no `libwkhtmltox` file. Instead it runs marqius-wkhtmltopdf, the maintained replacement for wkhtmltopdf, which comes inside the package.
 
 - **No more "Unable to load shared library 'libwkhtmltox'".** There is no native library to load, so that error, `DllNotFoundException` and `BadImageFormatException` cannot happen.
-- **Your code stays the same.** Same namespace (`DinkToPdf`), same `SynchronizedConverter`, same settings.
+- **Your code stays the same.** Every class, method, event and setting of DinkToPdf 1.0.8, with the same names, in the same `DinkToPdf` namespace. Checked on every build.
 - **Fast, and safe with many users at once.** Each PDF is made in its own process, so requests run side by side.
 - **Works everywhere .NET runs:** Windows, Linux (also Alpine and Docker), macOS; .NET 8, 9 and 10, and .NET Framework 4.6.2 or later.
 - **Many languages.** English, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean and more, as real text you can search and copy.
@@ -27,6 +27,15 @@ context.LoadUnmanagedLibrary(Path.Combine(Directory.GetCurrentDirectory(), "libw
 ```
 
 **Step 3.** Run your app as usual. It makes the same PDFs. Nothing else in your code changes.
+
+### Will my existing code keep working?
+
+Yes. Each point below is tested on every build, on Windows, Linux and macOS:
+
+- **Same API.** All of DinkToPdf 1.0.8's API is here, unchanged: every class, method, property, event, setting and setting name, compared line by line with DinkToPdf 1.0.8 from nuget.org. That includes `WkHtmlToXBindings`, DinkToPdf's raw calls, which now work without libwkhtmltox.
+- **Nothing new in `DinkToPdf`.** The `DinkToPdf` namespace has nothing that DinkToPdf 1.0.8 did not have, so nothing can clash with your code. What this package adds is in the namespace `Marqius.DinkToPdf`, which you add only when you want it.
+- **Code already built against DinkToPdf runs too.** Another package that uses DinkToPdf, for example, runs unchanged. If a package brings DinkToPdf into your app, the build uses Marqius.DinkToPdf in its place.
+- **Same behaviour.** `Convert` returns the PDF, or an empty array when it can't be made, as before. Every event comes before `Convert` returns, and handlers are called one at a time. Relative paths such as `Out = "report.pdf"` mean your app's folder.
 
 ## New here? Make your first PDF in 5 minutes
 
@@ -92,6 +101,7 @@ dotnet add package Marqius.DinkToPdf
 ```csharp
 using DinkToPdf;
 using DinkToPdf.Contracts;
+using Marqius.DinkToPdf; // ConvertAsync
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -122,7 +132,7 @@ dotnet run
 
 It prints an address such as `http://localhost:5000`. Open that address with `/invoice` at the end, and the PDF downloads.
 
-`ConvertAsync` makes the PDF without blocking a thread. If the visitor closes the page, `stop` stops the PDF too.
+`ConvertAsync` makes the PDF without blocking a thread. If the visitor closes the page, `stop` stops the PDF too. It comes with `using Marqius.DinkToPdf;`, not with `DinkToPdf`, so it never clashes with a `ConvertAsync` your code already has.
 
 ## Common settings
 
@@ -208,7 +218,7 @@ converter.Warning += (sender, e) => Console.WriteLine("Warning: " + e.Message);
 converter.Error += (sender, e) => Console.WriteLine("Error: " + e.Message);
 ```
 
-If you don't listen to them, they are written to the console's error output, so they show up in your server's log.
+If you don't listen to them, they are not printed, as in DinkToPdf. One exception: when a PDF can't be made and nothing listens to `Error`, the reason is written to the console's error output, so it shows up in your server's log.
 
 ## Licence and trial
 
@@ -239,11 +249,13 @@ marqius-wkhtmltopdf is commercial software with a 30-day free trial.
 |---|---|---|
 | What it loads | `libwkhtmltox` 0.12.4 (2016), inside your app | nothing: the program runs next to your app |
 | Many PDFs at once | one at a time | side by side |
-| `await` | no | `ConvertAsync`, with cancelling |
+| `await` | no | `ConvertAsync` (with `using Marqius.DinkToPdf;`), with cancelling |
 | Files on the server (`file:///`) | load | load |
 | `LoadSettings.BlockLocalFileAccess = true` | files still load for `HtmlContent` | files are blocked, as the setting says |
 | Text size on Windows | about an eighth bigger than on Linux | the same as on Linux, on every system |
 | A table header repeated on a new page | drawn over that page's first row | drawn above it |
+| A PDF that can't be made, with no `Error` handler | says nothing | writes the reason to the console's error output |
+| `Tools.GetLibraryVersion()` | `0.12.4` | `0.12.6` |
 | Still updated | last release 2017 | yes |
 
 ## How it is tested
@@ -252,6 +264,8 @@ Every change is tested on GitHub before it is published:
 - Windows Server 2025 and 2022, Linux x64 and ARM64, and macOS.
 - Each example in this page is run exactly as printed.
 - DinkToPdf's own example app runs unchanged.
+- DinkToPdf 1.0.8's whole API is compared, line by line, with this package's.
+- A library built against DinkToPdf 1.0.8 runs on this package, and the same code compiles against it with every warning treated as an error.
 - Docker images are built on Debian and Alpine.
 - Publishing is tried self-contained, single-file, trimmed and Native AOT.
 

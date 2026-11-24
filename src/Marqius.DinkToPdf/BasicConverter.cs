@@ -18,6 +18,10 @@ namespace DinkToPdf
         /// <summary>The document this converter was last given.</summary>
         public IDocument ProcessingDocument { get; private set; }
 
+        // marqius: PDFs are made side by side, but this converter's event handlers are called one at
+        // a time, as DinkToPdf's single worker thread called them, so handlers written for it stay safe
+        private readonly object eventLock = new object();
+
         /// <summary>Raised when a conversion moves to its next phase, such as "Loading pages" or "Printing pages".</summary>
         public event EventHandler<PhaseChangedArgs> PhaseChanged;
 
@@ -27,10 +31,10 @@ namespace DinkToPdf
         /// <summary>Raised when a conversion ends, saying whether the PDF was made.</summary>
         public event EventHandler<FinishedArgs> Finished;
 
-        /// <summary>Raised when something stops a PDF from being made, such as a page that cannot be loaded or no fonts. With no handler, the message goes to standard error.</summary>
+        /// <summary>Raised when something stops a PDF from being made, such as a page that cannot be loaded or no fonts. With no handler, and no PDF made, the message is written to standard error (DinkToPdf said nothing).</summary>
         public event EventHandler<ErrorArgs> Error;
 
-        /// <summary>Raised for something worth knowing that did not stop the PDF, such as a picture that could not be loaded, or letters no installed font has (with the command that downloads one). With no handler, the message goes to standard error.</summary>
+        /// <summary>Raised for something worth knowing that did not stop the PDF, such as a picture that could not be loaded, or letters no installed font has (with the command that downloads one).</summary>
         public event EventHandler<WarningArgs> Warning;
 
         /// <summary>A converter that works through these tools: <c>new BasicConverter(new PdfTools())</c>.</summary>
@@ -52,14 +56,7 @@ namespace DinkToPdf
             Tools.Load();
 
             IntPtr converter = CreateConverter(document);
-
-            // register events: each conversion's events name its own document (marqius: conversions
-            // may run at the same time, each in its own process)
-            Tools.SetPhaseChangedCallback(converter, c => OnPhaseChanged(c, document));
-            Tools.SetProgressChangedCallback(converter, c => OnProgressChanged(c, document));
-            Tools.SetFinishedCallback(converter, (c, success) => OnFinished(c, success, document));
-            Tools.SetWarningCallback(converter, (c, message) => OnWarning(c, message, document));
-            Tools.SetErrorCallback(converter, (c, message) => OnError(c, message, document));
+            var unheard = Register(converter, document);
 
             try
             {
@@ -68,6 +65,10 @@ namespace DinkToPdf
                 if (converted)
                 {
                     result = Tools.GetConversionResult(converter);
+                }
+                else
+                {
+                    Unheard(unheard);
                 }
             }
             finally
@@ -78,15 +79,22 @@ namespace DinkToPdf
             return result;
         }
 
-        /// <summary>
-        /// Converts the document without holding a thread while the PDF is made (marqius). The same
-        /// result and events as <see cref="Convert(IDocument)"/>: the PDF's bytes, or none when it
-        /// could not be made.
-        /// </summary>
-        /// <param name="document">The document to convert.</param>
-        /// <param name="cancellationToken">Stops the conversion, and its program, when cancelled.</param>
-        /// <exception cref="OperationCanceledException">The conversion was cancelled.</exception>
-        public virtual async System.Threading.Tasks.Task<byte[]> ConvertAsync(IDocument document, System.Threading.CancellationToken cancellationToken = default)
+        // register events: each conversion's events name its own document (marqius: conversions may run
+        // at the same time, each in its own process). Errors no handler takes are kept, for Unheard.
+        private List<string> Register(IntPtr converter, IDocument document)
+        {
+            var unheard = new List<string>();
+            Tools.SetPhaseChangedCallback(converter, c => OnPhaseChanged(c, document));
+            Tools.SetProgressChangedCallback(converter, c => OnProgressChanged(c, document));
+            Tools.SetFinishedCallback(converter, (c, success) => OnFinished(c, success, document));
+            Tools.SetWarningCallback(converter, (c, message) => OnWarning(c, message, document));
+            Tools.SetErrorCallback(converter, (c, message) => OnError(c, message, document, unheard));
+            return unheard;
+        }
+
+        // Convert, without holding a thread while the PDF is made (for Marqius.DinkToPdf's ConvertAsync):
+        // the same result and events. Internal, so it is never part of DinkToPdf's own API.
+        internal async System.Threading.Tasks.Task<byte[]> ConvertAsyncCore(IDocument document, System.Threading.CancellationToken cancellationToken)
         {
             if (!(Tools is PdfTools tools))
             {
@@ -104,17 +112,17 @@ namespace DinkToPdf
             Tools.Load();
 
             IntPtr converter = CreateConverter(document);
-            Tools.SetPhaseChangedCallback(converter, c => OnPhaseChanged(c, document));
-            Tools.SetProgressChangedCallback(converter, c => OnProgressChanged(c, document));
-            Tools.SetFinishedCallback(converter, (c, success) => OnFinished(c, success, document));
-            Tools.SetWarningCallback(converter, (c, message) => OnWarning(c, message, document));
-            Tools.SetErrorCallback(converter, (c, message) => OnError(c, message, document));
+            var unheard = Register(converter, document);
 
             try
             {
                 if (await tools.DoConversionAsync(converter, cancellationToken).ConfigureAwait(false))
                 {
                     result = Tools.GetConversionResult(converter);
+                }
+                else
+                {
+                    Unheard(unheard);
                 }
             }
             finally
@@ -136,7 +144,7 @@ namespace DinkToPdf
                 Description = Tools.GetPhaseDescription(converter, currentPhase)
             };
 
-            PhaseChanged?.Invoke(this, eventArgs);
+            lock (eventLock) PhaseChanged?.Invoke(this, eventArgs);
         }
 
         private void OnProgressChanged(IntPtr converter, IDocument document)
@@ -147,7 +155,7 @@ namespace DinkToPdf
                 Description = Tools.GetProgressString(converter)
             };
 
-            ProgressChanged?.Invoke(this, eventArgs);
+            lock (eventLock) ProgressChanged?.Invoke(this, eventArgs);
         }
 
         private void OnFinished(IntPtr converter, int success, IDocument document)
@@ -158,10 +166,10 @@ namespace DinkToPdf
                 Success = success == 1 ? true : false
             };
 
-            Finished?.Invoke(this, eventArgs);
+            lock (eventLock) Finished?.Invoke(this, eventArgs);
         }
 
-        private void OnError(IntPtr converter, string message, IDocument document)
+        private void OnError(IntPtr converter, string message, IDocument document, List<string> unheard)
         {
             var eventArgs = new ErrorArgs()
             {
@@ -171,9 +179,9 @@ namespace DinkToPdf
 
             var handlers = Error;
             if (handlers != null)
-                handlers(this, eventArgs);
+                lock (eventLock) handlers(this, eventArgs);
             else
-                Unheard("error", message);
+                lock (unheard) unheard.Add(message);
         }
 
         private void OnWarning(IntPtr converter, string message, IDocument document)
@@ -184,20 +192,20 @@ namespace DinkToPdf
                 Message = message
             };
 
-            var handlers = Warning;
-            if (handlers != null)
-                handlers(this, eventArgs);
-            else
-                Unheard("warning", message);
+            lock (eventLock) Warning?.Invoke(this, eventArgs);
         }
 
-        // marqius: an error or warning no handler takes goes to standard error, as wkhtmltopdf's own
-        // messages do, so a server's log shows why a PDF was not made (no fonts, a page not found)
-        private static void Unheard(string kind, string message)
+        // marqius: when no PDF was made and no handler heard why, the reason goes to standard error, so
+        // a server's log shows it (no fonts, a page not found). A PDF that was made prints nothing, and
+        // warnings never print, as in DinkToPdf.
+        private static void Unheard(List<string> unheard)
         {
+            string[] messages;
+            lock (unheard) messages = unheard.ToArray();
             try
             {
-                Console.Error.WriteLine($"DinkToPdf ({kind}): {message}");
+                foreach (var message in messages)
+                    Console.Error.WriteLine($"DinkToPdf (error): {message}");
             }
             catch (Exception)
             {

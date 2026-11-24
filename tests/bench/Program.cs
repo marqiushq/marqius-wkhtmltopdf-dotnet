@@ -20,6 +20,9 @@ using PuppeteerSharp.Media;
 #else
 using DinkToPdf;
 #endif
+#if ENGINE_MARQIUS
+using Marqius.DinkToPdf; // ConvertAsync
+#endif
 
 public static class Bench
 {
@@ -121,15 +124,17 @@ public sealed class Engine : IAsyncDisposable
     private SynchronizedConverter converter;
 #if ENGINE_MARQIUS
     public string Name => "Marqius.DinkToPdf";
+    public string Version => $"marqius-wkhtmltopdf {global::Marqius.Wkhtmltopdf.Wkhtmltopdf.Version}";
 #else
     public string Name => "DinkToPdf with libwkhtmltox";
+    public string Version => $"libwkhtmltox {converter.Tools.GetLibraryVersion()}";
 #endif
-    public string Version => converter.Tools.GetLibraryVersion();
 
     public static Task<Engine> Start(string unused)
     {
+        // as DinkToPdf's examples do: no Tools.Load() here. The first Convert loads the library on the
+        // converter's own thread; loaded on this one, libwkhtmltox hangs when that thread uses it.
         var engine = new Engine { converter = new SynchronizedConverter(new PdfTools()) };
-        engine.converter.Tools.Load();
         return Task.FromResult(engine);
     }
 

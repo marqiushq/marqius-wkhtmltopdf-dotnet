@@ -40,8 +40,12 @@ namespace DinkToPdf
         /// <summary>True: marqius-wkhtmltopdf has everything the patched Qt gave wkhtmltopdf (headers, footers, outlines, links).</summary>
         public bool ExtendedQt() => true;
 
-        /// <summary>The wkhtmltopdf version marqius-wkhtmltopdf answers as, with its own version.</summary>
-        public string GetLibraryVersion() => $"0.12.6 (marqius-wkhtmltopdf {MarqiusProgram.Version})";
+        /// <summary>
+        /// The wkhtmltopdf version marqius-wkhtmltopdf works as: "0.12.6", a plain version number as
+        /// libwkhtmltox gave it (DinkToPdf's own gave "0.12.4"). marqius-wkhtmltopdf's own version is
+        /// <c>Marqius.Wkhtmltopdf.Wkhtmltopdf.Version</c>.
+        /// </summary>
+        public string GetLibraryVersion() => "0.12.6";
 
         /// <inheritdoc/>
         public IntPtr CreateGlobalSettings() => Add(new SettingBag(global: true));
@@ -157,11 +161,16 @@ namespace DinkToPdf
         /// <inheritdoc/>
         public string GetProgressString(IntPtr converter) => Get<Conversion>(converter).ProgressString;
 
-        /// <inheritdoc/>
-        public void Dispose()
+        // as in DinkToPdf, Dispose is only reached through IDisposable (using, or the DI container)
+        void IDisposable.Dispose()
         {
             // nothing to unload: there is no native library
         }
+
+        // for WkHtmlToXBindings: libwkhtmltox's answers that ITools does not give
+        internal static bool KnowsSetting(IntPtr settings, string name) => Get<SettingBag>(settings).Knows(name);
+
+        internal static int HttpErrorCode(IntPtr converter) => Get<Conversion>(converter).HttpErrorCode;
 
         // for the tests: the conversion behind a converter handle
         internal static Conversion ConversionOf(IntPtr converter) => Get<Conversion>(converter);

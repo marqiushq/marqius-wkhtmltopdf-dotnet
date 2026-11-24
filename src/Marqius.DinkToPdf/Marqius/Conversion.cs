@@ -28,6 +28,11 @@ namespace DinkToPdf.Marqius
 
         private static readonly Regex PhaseLine = new Regex(@"^(?<what>.+) \((?<at>\d+)/(?<of>\d+)\)$", RegexOptions.CultureInvariant);
         private static readonly Regex ProgressLine = new Regex(@"^\[[=> ]*\]\s*(?<text>.*)$", RegexOptions.CultureInvariant);
+        private static readonly Regex HttpLine = new Regex(@"due to http error: (?<code>\d{3})", RegexOptions.CultureInvariant);
+
+        // the cancellation of a ConvertAsync that runs an app's own Convert (a class of its own that
+        // overrides it): its base.Convert reaches here on the same flow, and stops the program on cancel
+        internal static readonly AsyncLocal<CancellationToken> Ambient = new AsyncLocal<CancellationToken>();
 
         internal readonly SettingBag Global;
         internal readonly List<(SettingBag Settings, byte[] Data)> Objects = new List<(SettingBag, byte[])>();
@@ -40,6 +45,8 @@ namespace DinkToPdf.Marqius
 
         internal int CurrentPhase;
         internal string ProgressString = "";
+        internal int HttpErrorCode;
+        private bool errorRaised;
         internal byte[] Result = Array.Empty<byte>();
 
         internal Conversion(SettingBag global)
@@ -104,7 +111,7 @@ namespace DinkToPdf.Marqius
         /// <summary>Runs it: true when the PDF was made, as libwkhtmltox's convert says.</summary>
         internal bool Run(IntPtr handle)
         {
-            return RunAsync(handle, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+            return RunAsync(handle, Ambient.Value).ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -116,7 +123,7 @@ namespace DinkToPdf.Marqius
         {
             if (Objects.Count == 0)
             {
-                Error?.Invoke(handle, "No objects to convert");
+                RaiseError(handle, "No objects to convert");
                 Finished?.Invoke(handle, 0);
                 return false;
             }
@@ -127,7 +134,9 @@ namespace DinkToPdf.Marqius
             {
                 var args = CommandLine(folder, out var output);
                 var start = MarqiusProgram.StartInfo(args);
-                start.WorkingDirectory = folder;
+                // the app's own folder, as libwkhtmltox ran in the app: relative paths in the settings
+                // (Out = "report.pdf", Page = "invoice.html", a style sheet) mean what they meant there
+                start.WorkingDirectory = AppFolder() ?? folder;
                 byte[] stdout;
                 int exit;
                 var limit = PdfTools.Timeout;
@@ -161,7 +170,7 @@ namespace DinkToPdf.Marqius
                             }
                             if (cancel.IsCancellationRequested)
                                 throw new OperationCanceledException("The conversion was cancelled, and marqius-wkhtmltopdf stopped.", cancel);
-                            Error?.Invoke(handle, $"marqius-wkhtmltopdf took longer than {limit.Value.TotalSeconds:0.#} s (PdfTools.Timeout) and was stopped");
+                            RaiseError(handle, $"marqius-wkhtmltopdf took longer than {limit.Value.TotalSeconds:0.#} s (PdfTools.Timeout) and was stopped");
                             CurrentPhase = PhaseCount - 1;
                             Finished?.Invoke(handle, 0);
                             Result = Array.Empty<byte>();
@@ -172,6 +181,8 @@ namespace DinkToPdf.Marqius
                     process.WaitForExit();
                     exit = process.ExitCode;
                     stdout = collected.ToArray();
+                    // a handler that threw: the program was let finish, and the exception goes to the caller
+                    handlerFailure?.Throw();
                 }
                 bool made;
                 if (output == null)
@@ -185,8 +196,8 @@ namespace DinkToPdf.Marqius
                     made = File.Exists(output) && new FileInfo(output).Length > 0;
                     Result = Array.Empty<byte>();
                 }
-                if (!made && exit != 0)
-                    Error?.Invoke(handle, $"marqius-wkhtmltopdf ended with exit status {exit} and made no PDF");
+                if (!made && !errorRaised)
+                    RaiseError(handle, $"marqius-wkhtmltopdf ended with exit status {exit} and made no PDF");
                 CurrentPhase = PhaseCount - 1;
                 Finished?.Invoke(handle, made ? 1 : 0);
                 return made;
@@ -202,6 +213,42 @@ namespace DinkToPdf.Marqius
                 {
                     // a file still open on Windows: the temporary folder's cleaning takes it later
                 }
+            }
+        }
+
+        private void RaiseError(IntPtr handle, string message)
+        {
+            errorRaised = true;
+            Error?.Invoke(handle, message);
+        }
+
+        // the first exception an app's handler threw while the program's messages were read
+        private System.Runtime.ExceptionServices.ExceptionDispatchInfo handlerFailure;
+
+        private void Raise(Action callback)
+        {
+            if (handlerFailure != null)
+                return; // after a handler threw, the messages are only drained, so the program can end
+            try
+            {
+                callback();
+            }
+            catch (Exception e)
+            {
+                handlerFailure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(e);
+            }
+        }
+
+        private static string AppFolder()
+        {
+            try
+            {
+                var here = Directory.GetCurrentDirectory();
+                return Directory.Exists(here) ? here : null;
+            }
+            catch (Exception)
+            {
+                return null; // the app's folder was removed: the program runs in the conversion's own
             }
         }
 
@@ -243,9 +290,9 @@ namespace DinkToPdf.Marqius
                 var message = pending.TrimEnd();
                 pending = null;
                 if (pendingIsError)
-                    Error?.Invoke(handle, message);
+                    Raise(() => RaiseError(handle, message));
                 else
-                    Warning?.Invoke(handle, message);
+                    Raise(() => Warning?.Invoke(handle, message));
             }
 
             void Take(string text)
@@ -264,16 +311,23 @@ namespace DinkToPdf.Marqius
                 {
                     CurrentPhase = Math.Max(0, Math.Min(PhaseCount - 1, at - 1));
                     ProgressString = "";
-                    PhaseChanged?.Invoke(handle);
+                    Raise(() => PhaseChanged?.Invoke(handle));
                 }
                 else if ((m = ProgressLine.Match(trimmed)).Success)
                 {
                     ProgressString = m.Groups["text"].Value.Trim();
-                    ProgressChanged?.Invoke(handle);
+                    Raise(() => ProgressChanged?.Invoke(handle));
                 }
                 else if (trimmed == "Done")
                 {
                     // the end of a successful run
+                }
+                else if (trimmed.StartsWith("Exit with code ", StringComparison.Ordinal))
+                {
+                    // the command line's summary of what it already said; libwkhtmltox never sent it,
+                    // but keeps the HTTP status that stopped the page
+                    if ((m = HttpLine.Match(trimmed)).Success)
+                        HttpErrorCode = int.Parse(m.Groups["code"].Value, System.Globalization.CultureInfo.InvariantCulture);
                 }
                 else if (trimmed.StartsWith("Error: ", StringComparison.Ordinal))
                 {

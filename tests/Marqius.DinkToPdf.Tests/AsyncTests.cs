@@ -30,7 +30,7 @@ namespace Marqius.DinkToPdf.Tests
             Setup.Program();
         }
 
-        private static HtmlToPdfDocument Never() => new HtmlToPdfDocument
+        internal static HtmlToPdfDocument Never() => new HtmlToPdfDocument
         {
             Objects = { new WaitingObject { HtmlContent = "<p>This page never says it is ready.</p>", WindowStatus = "ready" } },
         };
@@ -94,6 +94,41 @@ namespace Marqius.DinkToPdf.Tests
             }
             var all = await Task.WhenAll(tasks);
             Assert.All(all, pdf => Assert.True(Pdf.Is(pdf)));
+        }
+    }
+}
+
+namespace Marqius.DinkToPdf.Tests
+{
+    [Collection("one at a time")]
+    public class EventTests
+    {
+        public EventTests()
+        {
+            Setup.Program();
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task Handlers_are_called_one_at_a_time_while_PDFs_are_made_side_by_side()
+        {
+            var converter = new global::DinkToPdf.SynchronizedConverter(new global::DinkToPdf.PdfTools());
+            int inside = 0, most = 0, calls = 0;
+            converter.ProgressChanged += (s, e) =>
+            {
+                var now = System.Threading.Interlocked.Increment(ref inside);
+                if (now > most)
+                    most = now;
+                System.Threading.Thread.Sleep(2); // a handler that takes a moment, as one writing a log does
+                System.Threading.Interlocked.Increment(ref calls);
+                System.Threading.Interlocked.Decrement(ref inside);
+            };
+            var tasks = new System.Collections.Generic.List<System.Threading.Tasks.Task<byte[]>>();
+            for (int i = 0; i < 16; i++)
+                tasks.Add(converter.ConvertAsync(new global::DinkToPdf.HtmlToPdfDocument { Objects = { new global::DinkToPdf.ObjectSettings { HtmlContent = $"<h1>{i}</h1>" } } }));
+            var all = await System.Threading.Tasks.Task.WhenAll(tasks);
+            Assert.All(all, pdf => Assert.True(Pdf.Is(pdf)));
+            Assert.True(calls >= 16, $"{calls} progress events");
+            Assert.Equal(1, most);
         }
     }
 }

@@ -56,6 +56,12 @@ namespace DinkToPdf.Marqius
             return values.TryGetValue(name, out var v) ? v : "";
         }
 
+        // a setting libwkhtmltox has (set or not)
+        internal bool Knows(string name)
+        {
+            return !string.IsNullOrEmpty(name) && (Arguments.Knows(name, global) || Arguments.IsList(name, global));
+        }
+
         internal bool Has(string name, out string value)
         {
             return values.TryGetValue(name, out value) && value != null;

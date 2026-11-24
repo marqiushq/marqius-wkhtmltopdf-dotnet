@@ -13,6 +13,13 @@
     <!-- safe to trim, and to publish as Native AOT (checked by tests/customer.py aot) -->
     <IsTrimmable Condition="'$(TargetFramework)' == 'net8.0'">true</IsTrimmable>
     <IsAotCompatible Condition="'$(TargetFramework)' == 'net8.0'">true</IsAotCompatible>
+    <!-- DinkToPdf's own WkHtmlToXBindings takes byte* buffers, as libwkhtmltox did -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Above DinkToPdf 1.0.8's 1.0.8.0, and fixed: an app or a library built against DinkToPdf loads
+         this assembly in its place, and when the DinkToPdf package comes in too (through another
+         package), the build picks this one. The package's own version is in the file and product
+         versions. Checked by tests/api.py and tests/customer.py old-build. -->
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

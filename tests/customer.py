@@ -19,6 +19,10 @@ a tab, its name, a tab, the detail; the exit status is 1 when one fails.
   publish            dotnet publish -r <this system>, self-contained and single-file, run from elsewhere
   rotativa           Rotativa.AspNetCore 1.5.0 with the program README's two lines; ViewAsPdf
   cache              a cache folder that cannot be written (IIS): the index goes to the temporary folder
+  old-build          code built against DinkToPdf 1.0.8 (tests/old-build/Reports.cs, in a library that
+                     references DinkToPdf 1.0.8) runs in an app with Marqius.DinkToPdf: the build picks
+                     Marqius.DinkToPdf's DLL, and the library's code works on it with no libwkhtmltox;
+                     then the same code compiles against Marqius.DinkToPdf with warnings as errors
 """
 import os
 import re
@@ -384,8 +388,55 @@ File.WriteAllBytes("invoice.pdf", pdf);
             report(False, name, e)
 
 
+def old_build():
+    """A library built against DinkToPdf 1.0.8, in an app that adds Marqius.DinkToPdf (also what happens
+    when another package brings DinkToPdf in): the app runs the library's compiled code on ours."""
+    name = "code built against DinkToPdf 1.0.8 runs unchanged on Marqius.DinkToPdf"
+    try:
+        root, env = workspace()
+        old = HERE / "tests" / "old-build"
+        run(["dotnet", "new", "classlib", "-f", "netstandard2.0", "-o", "Reports"], root, env)
+        lib = root / "Reports"
+        (lib / "Class1.cs").unlink()
+        shutil.copy(old / "Reports.cs", lib / "Reports.cs")
+        project = (lib / "Reports.csproj").read_text(encoding="utf-8")
+        (lib / "Reports.csproj").write_text(project.replace("</PropertyGroup>", "  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n  </PropertyGroup>", 1), encoding="utf-8")
+        run(["dotnet", "add", "package", "DinkToPdf", "--version", "1.0.8"], lib, env)
+        run(["dotnet", "new", "console", "-f", "net8.0", "-o", "App"], root, env)
+        app = root / "App"
+        shutil.copy(old / "Program.cs", app / "Program.cs")
+        run(["dotnet", "add", "reference", str(lib / "Reports.csproj")], app, env)
+        run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+        out = run(["dotnet", "run"], app, env)
+        text = out.stdout
+        natives = [p.name for p in app.rglob("*wkhtmltox*")]
+        ok = (is_pdf(app / "invoice.pdf") and "assembly: DinkToPdf 1.1.0.0" in text and "raw: 0.12.6, A5, 48" in text
+              and "thread: True" in text and "finished: True" in text and "phase 6 of 6: Printing pages" in text
+              and "processing: True" in text and "library: 0.12.6, extended Qt: True" in text and not natives)
+        detail = "; ".join(l for l in text.splitlines() if l.startswith(("assembly", "raw", "finished", "library")))
+        report(ok, name, detail if ok else f"{text}{out.stderr}; libwkhtmltox files: {natives}")
+    except Exception as e:  # noqa: BLE001
+        report(False, name, e)
+
+    name = "the same code compiles against Marqius.DinkToPdf, every warning an error"
+    try:
+        root, env = workspace()
+        run(["dotnet", "new", "classlib", "-f", "net8.0", "-o", "Reports"], root, env)
+        lib = root / "Reports"
+        (lib / "Class1.cs").unlink()
+        shutil.copy(HERE / "tests" / "old-build" / "Reports.cs", lib / "Reports.cs")
+        project = (lib / "Reports.csproj").read_text(encoding="utf-8")
+        (lib / "Reports.csproj").write_text(project.replace(
+            "</PropertyGroup>", "  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>\n    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n    <Nullable>disable</Nullable>\n  </PropertyGroup>", 1), encoding="utf-8")
+        run(["dotnet", "add", "package", "Marqius.DinkToPdf"], lib, env)
+        out = run(["dotnet", "build", "-c", "Release"], lib, env)
+        report(True, name, "built, no warnings")
+    except Exception as e:  # noqa: BLE001
+        report(False, name, e)
+
+
 CHECKS = {"settings": settings, "quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
-          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot}
+          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot, "old-build": old_build}
 
 if __name__ == "__main__":
     if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):

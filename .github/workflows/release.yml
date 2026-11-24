@@ -6,8 +6,9 @@ name: Release
 #   every hour     when marqius-wkhtmltopdf's latest GitHub release is newer than the packages on
 #                  nuget.org, build.py checks each program against its SHA-256 and its GitHub build
 #                  provenance and packs both packages. They are tested as a developer meets them
-#                  (tests/customer.py: both READMEs as printed, DinkToPdf's own example, ASP.NET Core,
-#                  .NET Framework) on Linux x64 and ARM64, Windows Server 2025 and 2022 and macOS. Only
+#                  (tests/customer.py: both READMEs as printed, DinkToPdf's own example, code built
+#                  against DinkToPdf 1.0.8, ASP.NET Core, .NET Framework; tests/api.py: DinkToPdf 1.0.8's
+#                  whole API) on Linux x64 and ARM64, Windows Server 2025 and 2022 and macOS. Only
 #                  then are they published, given GitHub's build provenance, tagged, and installed again
 #                  from nuget.org itself. An hour with no new release ends after that first check.
 #   by hand        Actions > Release > Run workflow: the same, now; it also publishes when nuget.org
@@ -114,11 +115,14 @@ jobs:
         with:
           name: packages
           path: dist
+      - name: DinkToPdf 1.0.8's whole API, unchanged, in these very packages (tests/api.py)
+        if: matrix.os == 'ubuntu-24.04'
+        run: python tests/api.py
       - name: As a developer does it, from these very packages
         if: matrix.os != 'macos-15' || inputs.macos != false
         shell: bash
         run: |
-          checks="settings quickstart dinktopdf-example aspnet publish rotativa cache aot"
+          checks="settings quickstart dinktopdf-example old-build aspnet publish rotativa cache aot"
           case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
           python tests/customer.py $checks
 

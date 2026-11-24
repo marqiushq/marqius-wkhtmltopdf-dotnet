@@ -27,12 +27,17 @@ HERE = Path(__file__).resolve().parent.parent
 COMMIT = "b0546d21641eaef71f6fe0ddfd3998e8502baab7"  # rdvojmoc/DinkToPdf master, unchanged since 2020
 # documents whose blocking difference is known, with why: shown in the summary, not failed
 EXPECTED = {
-    "20-local-picture-blocked": "expected: with BlockLocalFileAccess = true, libwkhtmltox 0.12.4 still loaded a picture on the server for HtmlContent; Marqius.DinkToPdf blocks it, as the setting says",
+    "20-local-picture-blocked": "expected: with BlockLocalFileAccess = true, libwkhtmltox 0.12.4 still loaded a picture on the server for HtmlContent, even made alone in a new process; Marqius.DinkToPdf blocks it, as the setting says",
     "21-table-over-pages": "expected: libwkhtmltox 0.12.4 draws the table's repeated header over the first row of the next page; Marqius.DinkToPdf draws it above that row",
 }
 KNOWN = {
     "10-no-images": "known fault of marqius-wkhtmltopdf 0.12.14: a picture that can load is still drawn with LoadImages = false (--no-images); the engine's fix is under way",
 }
+
+# documents made again, each alone in a new process, after the run of all: libwkhtmltox keeps the
+# pictures it loaded for the life of the process, so in a run with the others, a picture an earlier
+# document loaded reaches a later one that blocks files. An app that always blocks them never loads it.
+ALONE = ("20-local-picture-blocked",)
 
 NATIVE = {
     "Linux": ("libwkhtmltox.so", "f134eb7ecd429d4c182ab41518c0d7d888cbb040ff5571750ca5657a6938975a"),
@@ -88,6 +93,10 @@ def main():
         p = customer.run(["dotnet", str(folder / "bin" / "Compat.dll"), str(root / f"work-{side}"), str(target)], folder / "bin", env, check=False)
         print(f"--- {side} (exit {p.returncode})\n{p.stdout}{p.stderr[-2000:]}", flush=True)
         lines.append((side, p.stdout))
+    for name in ALONE:
+        for side, folder in (("original", original), ("marqius", ours)):
+            p = customer.run(["dotnet", str(folder / "bin" / "Compat.dll"), str(root / f"alone-{side}-{name}"), str(out / side), name], folder / "bin", env, check=False)
+            print(f"--- {side}, {name} alone in a new process (exit {p.returncode})\n{p.stdout}{p.stderr[-2000:]}", flush=True)
 
     program = os.environ.get("MARQIUS_WKHTMLTOPDF") or str(HERE / "builds" / "runtimes" / ("win-x64" if system == "Windows" else "linux-x64") / "native" / ("marqius-wkhtmltopdf.exe" if system == "Windows" else "marqius-wkhtmltopdf"))
     report = out / "report"
