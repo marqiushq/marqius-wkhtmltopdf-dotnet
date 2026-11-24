@@ -64,6 +64,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PACKAGE_VERSION: ${{ inputs.package_version }}
+          DRY_RUN: ${{ inputs.dry_run }}
         run: |
           latest=$(python3 .github/release.py latest)
           versions=$(curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.dinktopdf/index.json 2>/dev/null || echo '{"versions":[]}')
@@ -76,6 +77,8 @@ jobs:
             publish=true
           elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ -n "$PACKAGE_VERSION" ] && ! echo "$versions" | grep -q "\"$PACKAGE_VERSION\""; then
             publish=true # a fix to the packages alone
+          elif [ "$DRY_RUN" = true ]; then
+            publish=true # a rehearsal: the whole path, even when nuget.org has this version; nothing is uploaded
           fi
           echo "nuget.org has ${have:-nothing}, latest release $latest: publish=$publish package=$package"
           printf 'publish=%s\nversion=%s\npackage=%s\n' "$publish" "$latest" "$package" >>"$GITHUB_OUTPUT"
