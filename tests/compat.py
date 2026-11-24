@@ -29,9 +29,9 @@ COMMIT = "b0546d21641eaef71f6fe0ddfd3998e8502baab7"  # rdvojmoc/DinkToPdf master
 EXPECTED = {
     "21-table-over-pages": "expected: libwkhtmltox 0.12.4 draws the table's repeated header over the first row of the next page; Marqius.DinkToPdf draws it above that row",
 }
-KNOWN = {
-    "10-no-images": "known fault of marqius-wkhtmltopdf 0.12.14: a picture that can load is still drawn with LoadImages = false (--no-images); the engine's fix is under way",
-}
+# known faults of ours, while their fix is under way (none: 10-no-images, LoadImages = false, prints
+# no picture since marqius-wkhtmltopdf 0.12.15)
+KNOWN = {}
 
 # documents made again, each alone in a new process, after the run of all: libwkhtmltox keeps the
 # pictures it loaded for the life of the process, so in a run with the others, a picture an earlier
