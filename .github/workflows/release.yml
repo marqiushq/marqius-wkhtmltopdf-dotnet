@@ -122,8 +122,13 @@ jobs:
           case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
           python tests/customer.py $checks
 
+  compat:
+    needs: follow
+    if: needs.follow.outputs.publish == 'true'
+    uses: ./.github/workflows/compat.yml
+
   publish:
-    needs: [follow, test]
+    needs: [follow, test, compat]
     if: vars.PUBLISHING == 'on' && !github.event.repository.private
     runs-on: ubuntu-24.04
     environment: nuget

@@ -43,7 +43,7 @@ def ask(port, seconds=90):
 
 def main():
     root, env = customer.workspace()
-    customer.run(["dotnet", "new", "web", "-o", "MyApp"], root, env)
+    customer.run(["dotnet", "new", "web", "-f", "net8.0", "-o", "MyApp"], root, env)
     app = root / "MyApp"
     customer.run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
     register = customer.example("README.md", "aspnet register")

@@ -99,7 +99,7 @@ COPY publish/ .
 ENTRYPOINT ["dotnet", "MyApp.dll"]
 ```
 
-On Alpine (`aspnet:8.0-alpine`), the line is `RUN apk add --no-cache font-liberation`.
+Use the `aspnet` tag of your app's .NET version (`9.0`, `10.0`). On Alpine (`aspnet:8.0-alpine`), the fonts line is `RUN apk add --no-cache font-liberation`.
 
 ## Fonts and languages
 
@@ -116,9 +116,14 @@ no installed font has those letters. Download the open font that has them, once,
 |---|---|---|
 | Native library | libwkhtmltox 0.12.4 (2016), loaded into your app | none: the program runs beside your app |
 | Threads | one worker thread for every conversion | side by side, a process each |
-| Files on the server (`file:///`, relative paths) | load | load, as in DinkToPdf; set `LoadSettings.BlockLocalFileAccess = true` for HTML you do not control |
+| Files on the server (`file:///`, relative paths) | load | load, as in DinkToPdf |
+| `LoadSettings.BlockLocalFileAccess = true` | files still loaded for `HtmlContent` | files blocked, as the setting says: use it for HTML you do not control |
+| Type size on Windows | about an eighth larger than on Linux | the same on every system, as on Linux: check page breaks of templates tuned on Windows |
+| A table's header repeated on a new page | drawn over that page's first row | drawn above it |
 | `PdfTools.GetLibraryVersion()` | `0.12.4` | `0.12.6 (marqius-wkhtmltopdf 0.12.14)` |
 | Maintained | last release 2017 | yes |
+
+We make the same 27 documents with both, covering every setting that changes a PDF, and compare them page by page on Linux and Windows at each release: the results are in this repository's Actions, under "Beside DinkToPdf".
 
 ## Questions
 

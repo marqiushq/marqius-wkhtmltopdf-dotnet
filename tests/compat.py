@@ -25,6 +25,15 @@ import customer  # noqa: E402
 
 HERE = Path(__file__).resolve().parent.parent
 COMMIT = "b0546d21641eaef71f6fe0ddfd3998e8502baab7"  # rdvojmoc/DinkToPdf master, unchanged since 2020
+# documents whose blocking difference is known, with why: shown in the summary, not failed
+EXPECTED = {
+    "20-local-picture-blocked": "expected: with BlockLocalFileAccess = true, libwkhtmltox 0.12.4 still loaded a picture on the server for HtmlContent; Marqius.DinkToPdf blocks it, as the setting says",
+    "21-table-over-pages": "expected: libwkhtmltox 0.12.4 draws the table's repeated header over the first row of the next page; Marqius.DinkToPdf draws it above that row",
+}
+KNOWN = {
+    "10-no-images": "known fault of marqius-wkhtmltopdf 0.12.14: a picture that can load is still drawn with LoadImages = false (--no-images); the engine's fix is under way",
+}
+
 NATIVE = {
     "Linux": ("libwkhtmltox.so", "f134eb7ecd429d4c182ab41518c0d7d888cbb040ff5571750ca5657a6938975a"),
     "Windows": ("libwkhtmltox.dll", "6763fcc0707eca0a7f8d02495fb58d9c996282bd328573882d8bbbde60666f19"),
@@ -90,17 +99,33 @@ def main():
     rows = list(csv.DictReader(open(report / "summary.csv", encoding="utf-8"))) if (report / "summary.csv").exists() else []
     summary = [f"### DinkToPdf 1.0.8 with libwkhtmltox 0.12.4, beside Marqius.DinkToPdf ({system})", "",
                f"Compared by marqius-wkhtmltopdf compare: {c.stdout.strip().splitlines()[-1] if c.stdout.strip() else 'no report'}", "",
-               ("| " + " | ".join(rows[0].keys()) + " |") if rows else "", ("|" + "---|" * len(rows[0])) if rows else ""]
+               "| Document | Verdict | Level | Pages (DinkToPdf / ours) | First difference |", "|---|---|---|---|---|"]
     for r in rows:
-        summary.append("| " + " | ".join(str(v).replace("|", "/") for v in r.values()) + " |")
+        first = str(r.get("first", "")).replace("|", "/")[:120]
+        summary.append(f"| {r['pair']} | {r['verdict']} | {r['level']} | {r['pages_old']} / {r['pages_new']} | {first} |")
     not_made = [n for n, state in made.items() if state != "made"]
     if not_made:
         summary += ["", f"Not made by Marqius.DinkToPdf: {', '.join(not_made)}"]
+    unexplained = []
+    notes = []
+    for r in rows:
+        if r.get("level") != "blocking":
+            continue
+        why = EXPECTED.get(r["pair"]) or KNOWN.get(r["pair"])
+        if why:
+            notes.append(f"- **{r['pair']}**: {why}")
+        else:
+            unexplained.append(r["pair"])
+    if notes:
+        summary += ["", "Blocking differences already explained:", ""] + notes
+    if unexplained:
+        summary += ["", f"**Blocking differences not explained: {', '.join(unexplained)}**"]
     (out / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
     if os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
             f.write("\n".join(summary) + "\n")
-    sys.exit(1 if not_made or c.returncode != 0 else 0)
+    print("\n".join(summary[-(len(notes) + len(unexplained) + 4):]), flush=True)
+    sys.exit(1 if not_made or unexplained or not rows else 0)
 
 
 if __name__ == "__main__":

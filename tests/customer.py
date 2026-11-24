@@ -124,7 +124,7 @@ def aspnet():
     name = "ASP.NET Core: the README's register and endpoint lines, published and asked for /invoice"
     try:
         root, env = workspace()
-        run(["dotnet", "new", "web", "-o", "MyApp"], root, env)
+        run(["dotnet", "new", "web", "-f", "net8.0", "-o", "MyApp"], root, env)
         app = root / "MyApp"
         run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
         register = example("README.md", "aspnet register")
