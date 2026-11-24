@@ -45,7 +45,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: release
+  # a rehearsal neither waits behind a run that publishes nor takes its place
+  group: release${{ inputs.dry_run && '-dry-run' || '' }}
   cancel-in-progress: false
 
 jobs:
@@ -246,7 +247,9 @@ jobs:
 
   live:
     needs: [follow, publish]
-    if: ${{ !inputs.dry_run }}
+    # after any publish, the listing-only one too (where the test and compat jobs are skipped, so an
+    # implicit success() would be false)
+    if: ${{ !failure() && !cancelled() && !inputs.dry_run && needs.publish.result == 'success' }}
     name: from nuget.org (${{ matrix.os }})
     strategy:
       fail-fast: false
