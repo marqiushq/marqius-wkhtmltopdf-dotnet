@@ -1,4 +1,4 @@
-﻿using DinkToPdf.Contracts;
+using DinkToPdf.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace DinkToPdf
 {
+    /// <summary>A line of text, or a page of HTML, at the foot of every page. Text may hold [page], [topage], [date], [title] and the like.</summary>
     public class FooterSettings : ISettings
     {
         /// <summary>

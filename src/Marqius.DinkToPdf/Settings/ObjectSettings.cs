@@ -1,4 +1,4 @@
-﻿using DinkToPdf.Contracts;
+using DinkToPdf.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace DinkToPdf
 {
+    /// <summary>One page of HTML in the PDF: HTML you give (<see cref="HtmlContent"/>) or a web address or file (<see cref="Page"/>), with how it looks, its header and footer, and how it loads.</summary>
     public class ObjectSettings : IObject
     {
         /// <summary>
@@ -45,10 +46,12 @@ namespace DinkToPdf
         [WkHtml("pagesCount")]
         public bool? PagesCount { get; set; }
 
+        /// <summary>The HTML of this page, as a string. Pictures and stylesheets it names by full address load; files on this computer load as <c>file:///</c> addresses.</summary>
         public string HtmlContent { get; set; }
 
         private WebSettings webSettings = new WebSettings();
 
+        /// <summary>How this page looks: backgrounds, pictures, scripts, print styles.</summary>
         public WebSettings WebSettings {
             get { return webSettings; }
             set { webSettings = value; }
@@ -56,6 +59,7 @@ namespace DinkToPdf
 
         private HeaderSettings headerSettings = new HeaderSettings();
 
+        /// <summary>The text or HTML at the top of each page.</summary>
         public HeaderSettings HeaderSettings {
             get { return headerSettings; }
             set { headerSettings = value; }
@@ -63,6 +67,7 @@ namespace DinkToPdf
 
         private FooterSettings footerSettings = new FooterSettings();
 
+        /// <summary>The text or HTML at the foot of each page.</summary>
         public FooterSettings FooterSettings {
             get { return footerSettings; }
             set { footerSettings = value; }
@@ -70,11 +75,13 @@ namespace DinkToPdf
 
         private LoadSettings loadSettings = new LoadSettings();
 
+        /// <summary>How this page is loaded: sign-in, cookies, headers, scripts' time, zoom.</summary>
         public LoadSettings LoadSettings {
             get { return loadSettings; }
             set { loadSettings = value; }
         }
 
+        /// <summary><see cref="HtmlContent"/> as UTF-8 bytes (empty when there is none).</summary>
         public byte[] GetContent()
         {
             if (HtmlContent == null)

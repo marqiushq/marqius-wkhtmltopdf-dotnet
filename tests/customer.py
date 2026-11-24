@@ -329,8 +329,49 @@ for (int i = 1; i <= 2; i++)
         report(False, name, e)
 
 
+def page_size(path):
+    """The first page's MediaBox width and height, in points."""
+    data = Path(path).read_bytes().decode("latin-1")
+    m = re.search(r"/MediaBox\s*\[\s*([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s+([-\d.]+)\s*\]", data)
+    return (float(m.group(3)) - float(m.group(1)), float(m.group(4)) - float(m.group(2))) if m else (0, 0)
+
+
+def aot():
+    """A trimmed app, and a Native AOT app: the settings DinkToPdf reads by reflection (paper size,
+    orientation, margins) still reach the PDF."""
+    rid = this_rid()
+    root, env = workspace()
+    run(["dotnet", "new", "console", "-f", "net8.0", "-o", "Small"], root, env)
+    app = root / "Small"
+    run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+    (app / "Program.cs").write_text("""using DinkToPdf;
+
+var converter = new SynchronizedConverter(new PdfTools());
+var pdf = converter.Convert(new HtmlToPdfDocument
+{
+    GlobalSettings = { PaperSize = PaperKind.A5, Orientation = Orientation.Landscape, Margins = new MarginSettings(10, 10, 10, 10) },
+    Objects = { new ObjectSettings { HtmlContent = "<h1>A5, turned</h1>" } },
+});
+File.WriteAllBytes("invoice.pdf", pdf);
+""", encoding="utf-8")
+    for mode, extra in (("trimmed", ["--self-contained", "-p:PublishTrimmed=true"]), ("Native AOT", ["-p:PublishAot=true"])):
+        name = f"dotnet publish -r {rid} ({mode}): paper size, orientation and margins still reach the PDF"
+        try:
+            out = app / ("publish-" + mode.replace(" ", "-").lower())
+            p = run(["dotnet", "publish", "-c", "Release", "-r", rid, *extra, "-o", str(out)], app, env)
+            warnings = sorted(set(re.findall(r"warning (IL\d+)", p.stdout + p.stderr)))
+            elsewhere = Path(tempfile.mkdtemp(prefix="marqius-run-"))
+            exe = out / ("Small.exe" if os.name == "nt" else "Small")
+            run([str(exe)], elsewhere, env)
+            w, h = page_size(elsewhere / "invoice.pdf") if is_pdf(elsewhere / "invoice.pdf") else (0, 0)
+            ok = abs(w - 595.3) < 1 and abs(h - 419.5) < 1 and not warnings
+            report(ok, name, f"A5 landscape, {w:.1f} x {h:.1f} pt, no trimming warnings" if ok else f"page {w:.1f} x {h:.1f} pt; warnings {warnings}")
+        except Exception as e:  # noqa: BLE001
+            report(False, name, e)
+
+
 CHECKS = {"quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
-          "publish": publish, "rotativa": rotativa, "cache": cache}
+          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot}
 
 if __name__ == "__main__":
     if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):

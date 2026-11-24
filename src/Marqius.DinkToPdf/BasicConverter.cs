@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -9,26 +9,36 @@ using System.Globalization;
 
 namespace DinkToPdf
 {
+    /// <summary>Turns HTML into PDF with marqius-wkhtmltopdf. Make one for the whole app and share it: conversions run side by side, each in a process of its own.</summary>
     public class BasicConverter : IConverter
     {
+        /// <summary>The tools this converter works through: a <see cref="PdfTools"/>.</summary>
         public readonly ITools Tools;
 
+        /// <summary>The document this converter was last given.</summary>
         public IDocument ProcessingDocument { get; private set; }
 
+        /// <summary>Raised when a conversion moves to its next phase, such as "Loading pages" or "Printing pages".</summary>
         public event EventHandler<PhaseChangedArgs> PhaseChanged;
 
+        /// <summary>Raised as a conversion goes on, with text such as "Page 1 of 3".</summary>
         public event EventHandler<ProgressChangedArgs> ProgressChanged;
 
+        /// <summary>Raised when a conversion ends, saying whether the PDF was made.</summary>
         public event EventHandler<FinishedArgs> Finished;
 
+        /// <summary>Raised when something stops a PDF from being made, such as a page that cannot be loaded or no fonts. With no handler, the message goes to standard error.</summary>
         public event EventHandler<ErrorArgs> Error;
 
+        /// <summary>Raised for something worth knowing that did not stop the PDF, such as a picture that could not be loaded, or letters no installed font has (with the command that downloads one). With no handler, the message goes to standard error.</summary>
         public event EventHandler<WarningArgs> Warning;
 
+        /// <summary>A converter that works through these tools: <c>new BasicConverter(new PdfTools())</c>.</summary>
         public BasicConverter(ITools tools) {
             Tools = tools;
         }
 
+        /// <summary>Converts the document: the PDF's bytes, or an empty array when it could not be made (the <see cref="Error"/> event says why). With <see cref="GlobalSettings.Out"/> set, the PDF is written to that file, and the array is empty.</summary>
         public virtual byte[] Convert(IDocument document)
         {
             if (document.GetObjects().Count() == 0)
@@ -56,6 +66,53 @@ namespace DinkToPdf
                 bool converted = Tools.DoConversion(converter);
 
                 if (converted)
+                {
+                    result = Tools.GetConversionResult(converter);
+                }
+            }
+            finally
+            {
+                Tools.DestroyConverter(converter);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Converts the document without holding a thread while the PDF is made (marqius). The same
+        /// result and events as <see cref="Convert(IDocument)"/>: the PDF's bytes, or none when it
+        /// could not be made.
+        /// </summary>
+        /// <param name="document">The document to convert.</param>
+        /// <param name="cancellationToken">Stops the conversion, and its program, when cancelled.</param>
+        /// <exception cref="OperationCanceledException">The conversion was cancelled.</exception>
+        public virtual async System.Threading.Tasks.Task<byte[]> ConvertAsync(IDocument document, System.Threading.CancellationToken cancellationToken = default)
+        {
+            if (!(Tools is PdfTools tools))
+            {
+                // other tools have no way to wait without a thread: run Convert on one
+                return await System.Threading.Tasks.Task.Run(() => Convert(document), cancellationToken).ConfigureAwait(false);
+            }
+            if (document.GetObjects().Count() == 0)
+            {
+                throw new ArgumentException("No objects is defined in document that was passed. At least one object must be defined.");
+            }
+
+            ProcessingDocument = document;
+
+            byte[] result = new byte[0];
+            Tools.Load();
+
+            IntPtr converter = CreateConverter(document);
+            Tools.SetPhaseChangedCallback(converter, c => OnPhaseChanged(c, document));
+            Tools.SetProgressChangedCallback(converter, c => OnProgressChanged(c, document));
+            Tools.SetFinishedCallback(converter, (c, success) => OnFinished(c, success, document));
+            Tools.SetWarningCallback(converter, (c, message) => OnWarning(c, message, document));
+            Tools.SetErrorCallback(converter, (c, message) => OnError(c, message, document));
+
+            try
+            {
+                if (await tools.DoConversionAsync(converter, cancellationToken).ConfigureAwait(false))
                 {
                     result = Tools.GetConversionResult(converter);
                 }
@@ -175,6 +232,21 @@ namespace DinkToPdf
             return converter;
         }
 
+#if NET5_0_OR_GREATER
+        // the settings are read by reflection: a trimmed or Native AOT app keeps every one of their properties
+        private const System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes Members =
+            System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.PublicProperties | System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicProperties;
+
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(GlobalSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(ObjectSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(WebSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(HeaderSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(FooterSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(LoadSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(MarginSettings))]
+        [System.Diagnostics.CodeAnalysis.DynamicDependency(Members, typeof(HtmlToPdfDocument))]
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "DinkToPdf's settings types are kept whole by the DynamicDependency attributes above.")]
+#endif
         private void ApplyConfig(IntPtr config, ISettings settings, bool isGlobal) {
 
             if (settings == null)

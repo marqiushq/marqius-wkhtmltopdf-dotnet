@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,13 +6,18 @@ using DinkToPdf.Contracts;
 
 namespace DinkToPdf
 {
+    /// <summary>What happens when a page cannot be loaded.</summary>
     public enum ContentErrorHandling
     {
+        /// <summary>Stop: no PDF is made (the default).</summary>
         Abort,
+        /// <summary>Leave the page out, and make the PDF of the rest.</summary>
         Skip,
+        /// <summary>Make the PDF with whatever could be loaded.</summary>
         Ignore
     }
 
+    /// <summary>How a page is loaded: sign-in, cookies, headers, scripts' time, zoom, files on this computer.</summary>
     public class LoadSettings : ISettings
     {
         /// <summary>

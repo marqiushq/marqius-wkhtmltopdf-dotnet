@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,6 +6,7 @@ using DinkToPdf.Contracts;
 
 namespace DinkToPdf
 {
+    /// <summary>How a page looks: backgrounds, pictures, scripts, print styles, text encoding, smallest font size.</summary>
     public class WebSettings : ISettings
     {
         /// <summary>

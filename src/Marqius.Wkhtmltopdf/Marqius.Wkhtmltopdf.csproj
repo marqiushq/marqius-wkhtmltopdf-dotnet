@@ -13,6 +13,9 @@
     <NoWarn>$(NoWarn);NU5100;NU5129</NoWarn>
     <!-- where build.py laid out the checked programs: runtimes/<rid>/native/ and Builds.cs -->
     <MarqiusBuilds Condition="'$(MarqiusBuilds)' == ''">$(MSBuildThisFileDirectory)../../builds/</MarqiusBuilds>
+    <!-- safe to trim, and to publish as Native AOT (checked by tests/customer.py aot) -->
+    <IsTrimmable Condition="'$(TargetFramework)' == 'net8.0'">true</IsTrimmable>
+    <IsAotCompatible Condition="'$(TargetFramework)' == 'net8.0'">true</IsAotCompatible>
   </PropertyGroup>
 
   <ItemGroup>

@@ -228,6 +228,9 @@ namespace Marqius.Wkhtmltopdf
                 $"for a publish to another runtime, run dotnet publish -r {rid}, or set {PathVariable} to the program.", FileName);
         }
 
+#if NET8_0_OR_GREATER
+        [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("SingleFile", "IL3000", Justification = "An empty Assembly.Location (a single-file or Native AOT app) is skipped; the app's own folder is searched first.")]
+#endif
         private static IEnumerable<string> Folders(string rid)
         {
             var app = AppContext.BaseDirectory ?? "";

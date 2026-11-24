@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -6,6 +6,7 @@ using DinkToPdf.Contracts;
 
 namespace DinkToPdf
 {
+    /// <summary>A line of text, or a page of HTML, at the top of every page. Text may hold [page], [topage], [date], [title] and the like.</summary>
     public class HeaderSettings : ISettings
     {
         /// <summary>

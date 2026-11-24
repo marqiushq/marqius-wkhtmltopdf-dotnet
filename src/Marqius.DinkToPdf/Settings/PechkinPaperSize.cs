@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace DinkToPdf
 { 
+    /// <summary>A paper size as width and height with units, such as "210mm" by "297mm". A <see cref="PaperKind"/> such as <c>PaperKind.A4</c> converts to one by itself.</summary>
     public class PechkinPaperSize
     {
         private static readonly Dictionary<PaperKind, PechkinPaperSize> dictionary = new Dictionary<PaperKind, PechkinPaperSize>()
@@ -116,16 +117,20 @@ namespace DinkToPdf
             { PaperKind.PrcEnvelopeNumber10Rotated, new PechkinPaperSize("458mm", "324mm") },
         };
 
+        /// <summary>A paper size of your own: <c>new PechkinPaperSize("100mm", "150mm")</c>.</summary>
         public PechkinPaperSize(string width, string height)
         {
             this.Width = width;
             this.Height = height;
         }
 
+        /// <summary>The paper's height, with its unit (mm, cm, in).</summary>
         public string Height { get; set; }
 
+        /// <summary>The paper's width, with its unit (mm, cm, in).</summary>
         public string Width { get; set; }
 
+        /// <summary>The size of a standard paper: <c>PaperSize = PaperKind.A4</c>.</summary>
         public static implicit operator PechkinPaperSize(PaperKind paperKind)
         {
             return dictionary[paperKind];

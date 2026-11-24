@@ -1,4 +1,4 @@
-﻿using DinkToPdf.Contracts;
+using DinkToPdf.Contracts;
 using System;
 using System.Threading;
 using System.Collections.Concurrent;
@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace DinkToPdf
 {
+    /// <summary>The converter DinkToPdf's examples register for the whole app. With <see cref="PdfTools"/>, conversions run side by side (as many at once as there are processors); with other tools, one at a time on a thread of their own, as in DinkToPdf.</summary>
     public class SynchronizedConverter : BasicConverter
     {
         Thread conversionThread;
@@ -17,11 +18,13 @@ namespace DinkToPdf
 
         private readonly object startLock = new object();
 
+        /// <summary>A converter for the whole app: <c>new SynchronizedConverter(new PdfTools())</c>.</summary>
         public SynchronizedConverter(ITools tools) : base(tools)
         {
 
         }
 
+        /// <summary>Converts the document: the PDF's bytes, or an empty array when it could not be made (the Error event says why).</summary>
         public override byte[] Convert(IDocument document)
         {
             // marqius-wkhtmltopdf runs each conversion as a process of its own, so PdfTools needs no
@@ -34,6 +37,7 @@ namespace DinkToPdf
             return Invoke(() => base.Convert(document));
         }
 
+        /// <summary>Runs a call on the converter's own thread, as DinkToPdf did for libwkhtmltox. Not needed with <see cref="PdfTools"/>.</summary>
         public TResult Invoke<TResult>(Func<TResult> @delegate)
         {
             StartThread();

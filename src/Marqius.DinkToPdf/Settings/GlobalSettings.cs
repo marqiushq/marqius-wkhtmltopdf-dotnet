@@ -1,4 +1,4 @@
-﻿using DinkToPdf.Contracts;
+using DinkToPdf.Contracts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,18 +6,25 @@ using System.Threading.Tasks;
 
 namespace DinkToPdf
 {
+    /// <summary>Colour, or shades of grey.</summary>
     public enum ColorMode
     {
+        /// <summary>In colour (the default).</summary>
         Color,
+        /// <summary>In shades of grey.</summary>
         Grayscale
     }
 
+    /// <summary>Which way up the paper is.</summary>
     public enum Orientation
     {
+        /// <summary>Wider than it is tall.</summary>
         Landscape,
+        /// <summary>Taller than it is wide (the default).</summary>
         Portrait
     }
 
+    /// <summary>Settings for the whole PDF: paper size, orientation, margins, colour, outline, title.</summary>
     public class GlobalSettings : ISettings
     {
         
@@ -142,6 +149,7 @@ namespace DinkToPdf
             }
         }
 
+        /// <summary>The space around each page, four sides, in millimetres unless <see cref="MarginSettings.Unit"/> says otherwise: <c>new MarginSettings(10, 10, 10, 10)</c>.</summary>
         public MarginSettings Margins
         {
             get {

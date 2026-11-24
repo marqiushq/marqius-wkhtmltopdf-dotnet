@@ -5,6 +5,7 @@ using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using MarqiusProgram = global::Marqius.Wkhtmltopdf.Wkhtmltopdf;
 
 namespace DinkToPdf.Marqius
@@ -103,6 +104,16 @@ namespace DinkToPdf.Marqius
         /// <summary>Runs it: true when the PDF was made, as libwkhtmltox's convert says.</summary>
         internal bool Run(IntPtr handle)
         {
+            return RunAsync(handle, CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Runs it without holding a thread while the program works. Cancelling stops the program and
+        /// throws <see cref="OperationCanceledException"/>; going past <see cref="PdfTools.Timeout"/>
+        /// stops it too, and ends as a failed conversion (an error, and no PDF).
+        /// </summary>
+        internal async Task<bool> RunAsync(IntPtr handle, CancellationToken cancel)
+        {
             if (Objects.Count == 0)
             {
                 Error?.Invoke(handle, "No objects to convert");
@@ -111,7 +122,7 @@ namespace DinkToPdf.Marqius
             }
             var folder = Path.Combine(Path.GetTempPath(), "marqius-dinktopdf-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
-            Slots.Wait();
+            await Slots.WaitAsync(cancel).ConfigureAwait(false);
             try
             {
                 var args = CommandLine(folder, out var output);
@@ -119,14 +130,45 @@ namespace DinkToPdf.Marqius
                 start.WorkingDirectory = folder;
                 byte[] stdout;
                 int exit;
-                using (var process = new Process { StartInfo = start })
+                var limit = PdfTools.Timeout;
+                using (var process = new Process { StartInfo = start, EnableRaisingEvents = true })
+                using (var timer = limit.HasValue ? new CancellationTokenSource(limit.Value) : new CancellationTokenSource())
+                using (var either = CancellationTokenSource.CreateLinkedTokenSource(cancel, timer.Token))
                 {
+                    var exited = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    process.Exited += (s, e) => exited.TrySetResult(true);
                     process.Start();
                     process.StandardInput.Close();
                     var collected = new MemoryStream();
                     var copy = process.StandardOutput.BaseStream.CopyToAsync(collected);
-                    ReadMessages(process.StandardError, handle);
-                    copy.Wait();
+                    var messages = ReadMessagesAsync(process.StandardError, handle);
+                    using (either.Token.Register(() => exited.TrySetCanceled()))
+                    {
+                        try
+                        {
+                            await exited.Task.ConfigureAwait(false);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Stop(process);
+                            try
+                            {
+                                await Task.WhenAll(copy, messages).ConfigureAwait(false);
+                            }
+                            catch (Exception)
+                            {
+                                // the pipes closed with the program
+                            }
+                            if (cancel.IsCancellationRequested)
+                                throw new OperationCanceledException("The conversion was cancelled, and marqius-wkhtmltopdf stopped.", cancel);
+                            Error?.Invoke(handle, $"marqius-wkhtmltopdf took longer than {limit.Value.TotalSeconds:0.#} s (PdfTools.Timeout) and was stopped");
+                            CurrentPhase = PhaseCount - 1;
+                            Finished?.Invoke(handle, 0);
+                            Result = Array.Empty<byte>();
+                            return false;
+                        }
+                    }
+                    await Task.WhenAll(copy, messages).ConfigureAwait(false);
                     process.WaitForExit();
                     exit = process.ExitCode;
                     stdout = collected.ToArray();
@@ -168,10 +210,27 @@ namespace DinkToPdf.Marqius
             return bytes.Length > 8 && bytes[0] == '%' && bytes[1] == 'P' && bytes[2] == 'D' && bytes[3] == 'F' && bytes[4] == '-';
         }
 
+        // Stops the program (and a browser it started for a page's scripts, where .NET can say so).
+        private static void Stop(Process process)
+        {
+            try
+            {
+#if NET8_0_OR_GREATER
+                process.Kill(entireProcessTree: true);
+#else
+                process.Kill();
+#endif
+            }
+            catch (Exception)
+            {
+                // it ended by itself in the meantime
+            }
+        }
+
         // The program's messages, as they come: phases and progress go to their callbacks, warnings
         // and errors to theirs. A line indented under a warning belongs to it (the command that
         // downloads missing fonts, for instance).
-        private void ReadMessages(StreamReader stderr, IntPtr handle)
+        private async Task ReadMessagesAsync(StreamReader stderr, IntPtr handle)
         {
             var line = new StringBuilder();
             string pending = null;
@@ -228,18 +287,23 @@ namespace DinkToPdf.Marqius
                 }
             }
 
-            int c;
-            while ((c = stderr.Read()) >= 0)
+            var buffer = new char[4096];
+            int read;
+            while ((read = await stderr.ReadAsync(buffer, 0, buffer.Length).ConfigureAwait(false)) > 0)
             {
-                if (c == '\r' || c == '\n')
+                for (int i = 0; i < read; i++)
                 {
-                    if (line.Length > 0)
-                        Take(line.ToString());
-                    line.Clear();
-                }
-                else
-                {
-                    line.Append((char)c);
+                    var c = buffer[i];
+                    if (c == '\r' || c == '\n')
+                    {
+                        if (line.Length > 0)
+                            Take(line.ToString());
+                        line.Clear();
+                    }
+                    else
+                    {
+                        line.Append(c);
+                    }
                 }
             }
             if (line.Length > 0)
