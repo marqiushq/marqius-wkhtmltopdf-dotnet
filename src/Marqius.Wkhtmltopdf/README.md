@@ -8,6 +8,8 @@
 - **Checked before it runs:** each program is GitHub's own build, checked against its SHA-256 and GitHub build record before it goes into the package, and against that SHA-256 again before it first runs.
 - **Many languages:** English, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean and more.
 
+New to .NET or to PDFs? [The manual](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/docs/manual.md) takes you step by step.
+
 Using DinkToPdf? Use [Marqius.DinkToPdf](https://www.nuget.org/packages/Marqius.DinkToPdf) instead: DinkToPdf's own code, with no `libwkhtmltox`.
 
 ## Make your first PDF
@@ -32,9 +34,10 @@ File.WriteAllText("invoice.html", "<h1>Invoice 42</h1><p>Thank you for your orde
 
 // Run the program, as you would run wkhtmltopdf: input file, output file
 var run = Process.Start(Wkhtmltopdf.StartInfo(new[] { "invoice.html", "invoice.pdf" }))!;
+string messages = run.StandardError.ReadToEnd(); // read before waiting, so a long run cannot fill the pipe
 run.WaitForExit();
 
-Console.WriteLine(run.ExitCode == 0 ? "invoice.pdf is ready" : run.StandardError.ReadToEnd());
+Console.WriteLine(run.ExitCode == 0 ? "invoice.pdf is ready" : messages);
 ```
 
 **Step 3.** Run it:

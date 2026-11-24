@@ -60,7 +60,7 @@ jobs:
         if: matrix.os != 'macos-15' || inputs.macos != false
         shell: bash
         run: |
-          checks="settings quickstart dinktopdf-example old-build aspnet publish rotativa cache aot"
+          checks="settings quickstart dinktopdf-example old-build manual aspnet publish rotativa cache aot"
           case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
           python tests/customer.py $checks | tee customer.txt
           { echo "### ${{ matrix.os }}"; echo; echo "| Result | Check | Detail |"; echo "|---|---|---|"
@@ -68,7 +68,7 @@ jobs:
           ! grep -q "^FAIL" customer.txt
 
   docker:
-    name: Docker (the README's Dockerfile, Debian and Alpine)
+    name: Docker (the README's and the manual's Dockerfiles, Debian and Alpine)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

@@ -10,6 +10,8 @@
 - **Works everywhere .NET runs:** Windows, Linux (also Alpine and Docker), macOS; .NET 8, 9 and 10, and .NET Framework 4.6.2 or later.
 - **Many languages.** English, Arabic, Hebrew, Hindi, Thai, Chinese, Japanese, Korean and more, as real text you can search and copy.
 
+**New to .NET or to PDFs?** [The manual](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/docs/manual.md) takes you step by step: templates with your data, headers and footers, websites, Docker, other languages, and what to do when a PDF does not come out right.
+
 ## Already using DinkToPdf? Switch in 3 steps
 
 **Step 1.** In your project's folder, run these two commands:
@@ -274,7 +276,7 @@ Each converter is used the way its own examples show. DinkToPdf runs with `Synch
 
 Every change is tested on GitHub before it is published:
 - Windows Server 2025 and 2022, Linux x64 and ARM64, and macOS.
-- Each example in this page is run exactly as printed.
+- Each example in this page, and in [the manual](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/docs/manual.md), is run exactly as printed.
 - DinkToPdf's own example app runs unchanged.
 - DinkToPdf 1.0.8's whole API is compared, line by line, with this package's.
 - A library built against DinkToPdf 1.0.8 runs on this package, and the same code compiles against it with every warning treated as an error.

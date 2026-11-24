@@ -53,9 +53,14 @@ def main():
                        "RUN apk add --no-cache font-liberation"))
     bare = "".join(l + "\n" for l in printed.splitlines() if not l.startswith("RUN "))
     assert alpine != printed and "apk add" in alpine
+    # the manual's chapter 9: the RUN line with the fonts for other languages, in place of the README's
+    languages_line = customer.example("docs/manual.md", "manual docker languages").strip()
+    languages = "".join((languages_line if l.startswith("RUN ") else l) + "\n" for l in printed.splitlines())
+    assert languages != printed and "fonts-noto-cjk" in languages
 
-    for tag, dockerfile, wants_pdf in (("debian", printed, True), ("alpine", alpine, True), ("no-fonts", bare, False)):
-        name = (f"the README's Dockerfile ({tag})" if wants_pdf else "the Dockerfile without its fonts line") + ": GET /invoice"
+    for tag, dockerfile, wants_pdf in (("debian", printed, True), ("alpine", alpine, True), ("languages", languages, True), ("no-fonts", bare, False)):
+        name = ("the manual's Dockerfile with the fonts for other languages" if tag == "languages"
+                else f"the README's Dockerfile ({tag})" if wants_pdf else "the Dockerfile without its fonts line") + ": GET /invoice"
         image = "invoice-site" if tag == "debian" else f"invoice-site-{tag}"
         try:
             (app / "Dockerfile").write_text(dockerfile, encoding="utf-8")

@@ -19,6 +19,11 @@ a tab, its name, a tab, the detail; the exit status is 1 when one fails.
   publish            dotnet publish -r <this system>, self-contained and single-file, run from elsewhere
   rotativa           Rotativa.AspNetCore 1.5.0 with the program README's two lines; ViewAsPdf
   cache              a cache folder that cannot be written (IIS): the index goes to the temporary folder
+  manual             every example of docs/manual.md, as printed: the first PDF, a template with its
+                     style sheet and logo (in a folder whose name has a space), settings, a web page,
+                     three parts in one PDF, an MVC controller, languages, errors, the program itself,
+                     the licence line; the website and Docker chapters must match the README's tested
+                     ones
   old-build          code built against DinkToPdf 1.0.8 (tests/old-build/Reports.cs, in a library that
                      references DinkToPdf 1.0.8) runs in an app with Marqius.DinkToPdf: the build picks
                      Marqius.DinkToPdf's DLL, and the library's code works on it with no libwkhtmltox;
@@ -449,8 +454,183 @@ def old_build():
         report(False, name, e)
 
 
+MANUAL = "docs/manual.md"
+
+
+def console_app(root, env, name, package="Marqius.DinkToPdf"):
+    run(["dotnet", "new", "console", "-f", "net8.0", "-o", name], root, env)
+    app = root / name
+    run(["dotnet", "add", "package", package], app, env)
+    return app
+
+
+def pdf_pages(path):
+    data = Path(path).read_bytes() if Path(path).exists() else b""
+    return len(re.findall(rb"/Type\s*/Page(?![a-zA-Z])", data))
+
+
+def pdf_text(path):
+    """The PDF's text, when poppler's pdftotext is on this computer (else None)."""
+    tool = shutil.which("pdftotext")
+    if not tool:
+        return None
+    return subprocess.run([tool, "-layout", str(path), "-"], capture_output=True, text=True).stdout
+
+
+def serve(app, dll, env, path):
+    """dotnet publish, run the site on a free port, GET path: (body, content type)."""
+    run(["dotnet", "publish", "-c", "Release", "-o", str(app / "publish")], app, env)
+    port = free_port()
+    server = subprocess.Popen(["dotnet", dll, "--urls", f"http://127.0.0.1:{port}"], cwd=app / "publish", env=env,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    try:
+        for _ in range(60):
+            try:
+                with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=60) as r:
+                    return r.read(), r.headers.get("Content-Type")
+            except urllib.error.HTTPError as e:
+                return e.read(), f"HTTP {e.code}"
+            except OSError:
+                time.sleep(1)
+        return b"", "no answer"
+    finally:
+        server.kill()
+
+
+def manual():
+    """Every example of the manual, as printed."""
+    def check(name, body):
+        try:
+            ok, detail = body()
+            report(ok, f"manual: {name}", detail)
+        except Exception as e:  # noqa: BLE001
+            report(False, f"manual: {name}", e)
+
+    def first():
+        root, env = workspace()
+        app = console_app(root, env, "Invoice")
+        (app / "Program.cs").write_text(example(MANUAL, "manual first Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        return is_pdf(app / "invoice.pdf") and "invoice.pdf is ready" in out.stdout, out.stdout.strip()
+
+    def template():
+        root, env = workspace()
+        spaced = root / "My Apps"  # a folder name with a space, as many people have
+        spaced.mkdir()
+        app = console_app(spaced, env, "InvoiceApp")
+        (app / "templates").mkdir()
+        for f in ("invoice.html", "style.css", "logo.svg"):
+            (app / "templates" / f).write_text(example(MANUAL, f"manual template {f}"), encoding="utf-8")
+        project = app / "InvoiceApp.csproj"
+        text = project.read_text(encoding="utf-8")
+        assert text.rstrip().endswith("</Project>")
+        cut = text.rstrip().rfind("</Project>")
+        project.write_text(text[:cut] + example(MANUAL, "manual template csproj") + "\n" + text[cut:], encoding="utf-8")
+        code = example(MANUAL, "manual template Program.cs")
+        line = "var converter = new SynchronizedConverter(new PdfTools());"
+        assert code.count(line) == 1
+        # the test listens for warnings too: a style sheet or picture not found would be one
+        code = code.replace(line, line + '\nconverter.Warning += (s, e) => Console.WriteLine("WARNING " + e.Message);')
+        (app / "Program.cs").write_text(code, encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        text = pdf_text(app / "invoice.pdf")
+        ok = is_pdf(app / "invoice.pdf") and "WARNING" not in out.stdout and (text is None or ("Northwind" in text and "Ink cartridge" in text and "24.49" in text.replace(",", ".")))
+        return ok, "logo, style sheet and data in the PDF, no warnings" if ok else out.stdout + (text or "")
+
+    def settings_():
+        root, env = workspace()
+        app = console_app(root, env, "Settings")
+        (app / "Program.cs").write_text(example(MANUAL, "manual settings Program.cs"), encoding="utf-8")
+        run(["dotnet", "run"], app, env)
+        w, h = page_size(app / "invoice.pdf") if is_pdf(app / "invoice.pdf") else (0, 0)
+        text = pdf_text(app / "invoice.pdf")
+        ok = abs(w - 841.9) < 1 and abs(h - 595.3) < 1 and (text is None or "Page 1 of 1" in text)
+        return ok, f"A4 landscape {w:.1f} x {h:.1f} pt, \"Page 1 of 1\" in the header"
+
+    def web():
+        root, env = workspace()
+        app = console_app(root, env, "Web")
+        (app / "Program.cs").write_text(example(MANUAL, "manual web Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        return is_pdf(app / "page.pdf"), out.stdout.strip()
+
+    def parts():
+        root, env = workspace()
+        app = console_app(root, env, "Report")
+        (app / "Program.cs").write_text(example(MANUAL, "manual parts Program.cs"), encoding="utf-8")
+        run(["dotnet", "run"], app, env)
+        pages = pdf_pages(app / "report.pdf")
+        text = pdf_text(app / "report.pdf")
+        ok = pages == 3 and (text is None or ("Page 2 of 3" in text and "Page 3 of 3" in text))
+        return ok, f"{pages} pages, numbered 2 of 3 and 3 of 3"
+
+    def same_as_readme(label, readme_label, readme="README.md"):
+        same = example(MANUAL, label) == example(readme, readme_label)
+        return same, "the same as the README's, which the aspnet and docker checks run" if same else "differs from the README's tested example"
+
+    def mvc():
+        root, env = workspace()
+        run(["dotnet", "new", "mvc", "-f", "net8.0", "-o", "Shop"], root, env)
+        app = root / "Shop"
+        run(["dotnet", "add", "package", "Marqius.DinkToPdf"], app, env)
+        program = (app / "Program.cs").read_text(encoding="utf-8")
+        anchor = "builder.Services.AddControllersWithViews();\n"
+        assert program.count(anchor) == 1
+        (app / "Program.cs").write_text(program.replace(anchor, anchor + example(MANUAL, "manual mvc Program.cs")), encoding="utf-8")
+        (app / "Controllers" / "InvoiceController.cs").write_text(example(MANUAL, "manual mvc InvoiceController.cs"), encoding="utf-8")
+        body, kind = serve(app, "Shop.dll", env, "/Invoice/Download/42")
+        return body[:5] == b"%PDF-", f"/Invoice/Download/42: {len(body)} bytes, {kind}"
+
+    def languages():
+        root, env = workspace()
+        app = console_app(root, env, "Languages")
+        (app / "Program.cs").write_text(example(MANUAL, "manual languages Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        warned = [l for l in out.stdout.splitlines() if l.startswith("Warning:")]
+        return is_pdf(app / "thanks.pdf"), f"thanks.pdf made; {len(warned)} font warnings on this machine"
+
+    def errors():
+        root, env = workspace()
+        app = console_app(root, env, "Errors")
+        (app / "Program.cs").write_text(example(MANUAL, "manual errors Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        ok = is_pdf(app / "report.pdf") and "report.pdf is ready" in out.stdout and any(l.startswith("Warning:") and "chart.png" in l for l in out.stdout.splitlines())
+        return ok, "a warning names chart.png, and the PDF is made" if ok else out.stdout
+
+    def program():
+        root, env = workspace()
+        app = console_app(root, env, "Statement", "Marqius.Wkhtmltopdf")
+        (app / "Program.cs").write_text(example(MANUAL, "manual program Program.cs"), encoding="utf-8")
+        out = run(["dotnet", "run"], app, env)
+        return is_pdf(app / "statement.pdf") and "statement.pdf is ready" in out.stdout, out.stdout.strip()
+
+    def licence():
+        # the line goes into the website's Program.cs, before the first PDF: it must build
+        root, env = workspace()
+        app = website(root, env)
+        program = (app / "Program.cs").read_text(encoding="utf-8")
+        anchor = "var builder = WebApplication.CreateBuilder(args);\n"
+        assert program.count(anchor) == 1
+        (app / "Program.cs").write_text(program.replace(anchor, anchor + example(MANUAL, "manual licence Program.cs")), encoding="utf-8")
+        run(["dotnet", "build", "-c", "Release"], app, env)
+        return True, "builds in the website's Program.cs"
+
+    check("1-2 the first PDF", first)
+    check("3 a template, its style sheet and logo, filled with data", template)
+    check("4 paper, margins, headers and footers", settings_)
+    check("5 a web page", web)
+    check("6 three parts in one PDF", parts)
+    check("7 the minimal API", lambda: same_as_readme("manual aspnet Program.cs", "aspnet Program.cs"))
+    check("7 an MVC controller", mvc)
+    check("8 other languages", languages)
+    check("9 the Dockerfile", lambda: same_as_readme("manual docker Dockerfile", "docker Dockerfile"))
+    check("10 errors and warnings", errors)
+    check("12 the program itself", program)
+    check("13 the licence line", licence)
+
+
 CHECKS = {"settings": settings, "quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
-          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot, "old-build": old_build}
+          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot, "old-build": old_build, "manual": manual}
 
 if __name__ == "__main__":
     if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):
