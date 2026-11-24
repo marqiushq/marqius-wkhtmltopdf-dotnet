@@ -282,7 +282,6 @@ Each converter is used the way its own examples show. DinkToPdf runs with `Synch
 | Many PDFs at once | one at a time | side by side, as many as the server has processors |
 | `await` | no | `ConvertAsync` (with `using Marqius.DinkToPdf;`), with cancelling |
 | Files on the server (`file:///`) | load | load |
-| Text size on Windows | about an eighth bigger than on Linux | the same as on Linux, on every system |
 | A table header repeated on a new page | drawn over that page's first row | drawn above it |
 | A PDF that can't be made, with no `Error` handler | says nothing | writes the reason to the console's error output |
 | `Tools.GetLibraryVersion()` | `0.12.4` | `0.12.6` |
