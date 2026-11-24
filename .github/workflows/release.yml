@@ -124,7 +124,7 @@ jobs:
         if: matrix.os != 'macos-15' || inputs.macos != false
         shell: bash
         run: |
-          checks="settings quickstart dinktopdf-example old-build manual aspnet publish rotativa cache aot"
+          checks="settings quickstart dinktopdf-example old-build manual samples aspnet publish rotativa cache aot"
           case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
           python tests/customer.py $checks
 
@@ -194,7 +194,9 @@ jobs:
         run: |
           v="${{ needs.follow.outputs.package }}"
           for i in $(seq 1 60); do
-            curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.dinktopdf/index.json | grep -q "\"$v\"" && exit 0
+            # both: Marqius.DinkToPdf needs Marqius.Wkhtmltopdf, which nuget.org takes longer to check (40 MB)
+            curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.dinktopdf/index.json | grep -q "\"$v\"" \
+              && curl -fsS https://api.nuget.org/v3-flatcontainer/marqius.wkhtmltopdf/index.json | grep -q "\"$v\"" && exit 0
             sleep 30
           done
           echo "nuget.org did not serve $v within 30 minutes"; exit 1

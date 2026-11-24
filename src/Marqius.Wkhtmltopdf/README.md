@@ -1,8 +1,15 @@
-# wkhtmltopdf for .NET: Marqius.Wkhtmltopdf
+# Marqius.Wkhtmltopdf: wkhtmltopdf for .NET, maintained
 
 [![NuGet](https://img.shields.io/nuget/v/Marqius.Wkhtmltopdf)](https://www.nuget.org/packages/Marqius.Wkhtmltopdf)
+[![Downloads](https://img.shields.io/nuget/dt/Marqius.Wkhtmltopdf)](https://www.nuget.org/packages/Marqius.Wkhtmltopdf)
+[![.NET 8, 9, 10 and .NET Framework 4.6.2 or later](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010%20%7C%20Framework%204.6.2%2B-512BD4)](https://www.nuget.org/packages/Marqius.Wkhtmltopdf)
+[![Runs on Windows, Linux, macOS and Docker](https://img.shields.io/badge/runs%20on-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Docker-0b5cad)](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/actions)
 
 **Marqius.Wkhtmltopdf puts wkhtmltopdf in your .NET app, from one NuGet package.** It contains marqius-wkhtmltopdf, the maintained replacement for wkhtmltopdf, for Windows, Linux and macOS. It reads the same command line and options as wkhtmltopdf 0.12.6, so Rotativa and other libraries that run wkhtmltopdf work as before. There is no Qt, no X server and nothing else to install.
+
+![An invoice made from HTML by marqius-wkhtmltopdf](https://raw.githubusercontent.com/marqiushq/marqius-wkhtmltopdf-dotnet/main/docs/images/invoice.png)
+
+*This invoice is made from HTML and CSS by marqius-wkhtmltopdf, the program in this package: [see its code](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/tree/main/samples/invoice).*
 
 - **One package for every server:** Windows x64, Linux x64 and ARM64 (Alpine too), macOS on Apple silicon. `dotnet publish -r linux-x64` keeps only the program that system needs.
 - **Checked before it runs:** each program is GitHub's own build, checked against its SHA-256 and GitHub build record before it goes into the package, and against that SHA-256 again before it first runs.

@@ -19,6 +19,8 @@ a tab, its name, a tab, the detail; the exit status is 1 when one fails.
   publish            dotnet publish -r <this system>, self-contained and single-file, run from elsewhere
   rotativa           Rotativa.AspNetCore 1.5.0 with the program README's two lines; ViewAsPdf
   cache              a cache folder that cannot be written (IIS): the index goes to the temporary folder
+  samples            samples/invoice and samples/languages (the pictures on the package's page), each
+                     run with dotnet run in a copy of its folder: the PDF must be made
   manual             every example of docs/manual.md, as printed: the first PDF, a template with its
                      style sheet and logo (in a folder whose name has a space), settings, a web page,
                      three parts in one PDF, an MVC controller, languages, errors, the program itself,
@@ -632,8 +634,22 @@ def manual():
     check("13 the licence line", licence)
 
 
+def samples():
+    """The samples behind the pictures on the package's page: each one's own folder, dotnet run."""
+    for folder, pdf in (("invoice", "invoice.pdf"), ("languages", "languages.pdf")):
+        name = f"samples/{folder}: dotnet run makes {pdf}"
+        try:
+            root, env = workspace()
+            app = root / folder
+            shutil.copytree(HERE / "samples" / folder, app, ignore=shutil.ignore_patterns("bin", "obj", "*.pdf"))
+            out = run(["dotnet", "run"], app, env)
+            report(is_pdf(app / pdf), name, out.stdout.strip()[-200:])
+        except Exception as e:  # noqa: BLE001
+            report(False, name, e)
+
+
 CHECKS = {"settings": settings, "quickstart": quickstart, "dinktopdf-example": dinktopdf_example, "aspnet": aspnet, "framework": framework,
-          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot, "old-build": old_build, "manual": manual}
+          "publish": publish, "rotativa": rotativa, "cache": cache, "aot": aot, "old-build": old_build, "manual": manual, "samples": samples}
 
 if __name__ == "__main__":
     if os.environ.get("CUSTOMER_FEED") != "nuget.org" and not any(DIST.glob("Marqius.DinkToPdf.*.nupkg")):

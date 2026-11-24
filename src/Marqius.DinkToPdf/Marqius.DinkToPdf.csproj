@@ -6,9 +6,9 @@
     <!-- the assembly keeps DinkToPdf's name and namespace, so an app's code and its using lines stay as they are -->
     <AssemblyName>DinkToPdf</AssemblyName>
     <RootNamespace>DinkToPdf</RootNamespace>
-    <Title>DinkToPdf, with marqius-wkhtmltopdf in place of libwkhtmltox</Title>
-    <Description>DinkToPdf's API (namespace DinkToPdf: SynchronizedConverter, PdfTools, HtmlToPdfDocument, every setting), on marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf. Replace the DinkToPdf package with this one and delete libwkhtmltox: your code stays as it is. No native library to load, so no "Unable to load shared library 'libwkhtmltox'" and no BadImageFormatException; each PDF is made in its own process, so conversions run side by side. Windows, Linux (Alpine too) and macOS. marqius-wkhtmltopdf is commercial, with a 30-day free trial; free for personal, teaching and open-source use.</Description>
-    <PackageTags>dinktopdf;wkhtmltopdf;libwkhtmltox;html-to-pdf;pdf;aspnetcore;marqius</PackageTags>
+    <Title>Marqius.DinkToPdf: HTML to PDF for .NET, DinkToPdf without libwkhtmltox</Title>
+    <Description>HTML to PDF for .NET with DinkToPdf's API and no libwkhtmltox: replace the DinkToPdf package and your code keeps working. Make invoices, reports and documents on Windows, Linux, macOS and Docker, with .NET 8, 9 and 10 and .NET Framework. Async and safe for many users at once; 30 times faster per PDF than DinkToPdf in our benchmark.</Description>
+    <PackageTags>dinktopdf;wkhtmltopdf;libwkhtmltox;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;invoice;report;aspnetcore;dotnet;csharp;docker;linux;marqius</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <!-- safe to trim, and to publish as Native AOT (checked by tests/customer.py aot) -->
     <IsTrimmable Condition="'$(TargetFramework)' == 'net8.0'">true</IsTrimmable>

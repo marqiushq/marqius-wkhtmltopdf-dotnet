@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base href="{{folder}}">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <table class="top">
+    <tr>
+      <td><img src="logo.svg" class="logo"></td>
+      <td class="right">
+        <div class="kind">INVOICE</div>
+        <table class="meta">
+          <tr><th>Invoice no.</th><td>{{number}}</td></tr>
+          <tr><th>Date</th><td>{{date}}</td></tr>
+          <tr><th>Due</th><td>{{due}}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <table class="parties">
+    <tr>
+      <td>
+        <h2>From</h2>
+        <p><b>Northwind Supplies Ltd</b><br>12 Harbour Street<br>Bristol BS1 4QA<br>United Kingdom</p>
+      </td>
+      <td>
+        <h2>Bill to</h2>
+        <p><b>Contoso Retail plc</b><br>Accounts Payable<br>88 King's Road<br>London SW3 4TZ</p>
+      </td>
+    </tr>
+  </table>
+
+  <table class="lines">
+    <thead>
+      <tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr>
+    </thead>
+    <tbody>
+      {{rows}}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><th>Subtotal</th><td>{{subtotal}}</td></tr>
+    <tr><th>VAT 20%</th><td>{{vat}}</td></tr>
+    <tr class="due"><th>Total due</th><td>{{total}}</td></tr>
+  </table>
+
+  <div class="payment">
+    <h2>How to pay</h2>
+    <p>Bank transfer to Northwind Supplies Ltd, sort code 20-00-00, account 12345678, reference {{number}}.<br>
+    Payment is due within 30 days.</p>
+  </div>
+
+  <p class="thanks">Thank you for your order.</p>
+</body>
+</html>

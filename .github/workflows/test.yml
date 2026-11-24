@@ -60,7 +60,7 @@ jobs:
         if: matrix.os != 'macos-15' || inputs.macos != false
         shell: bash
         run: |
-          checks="settings quickstart dinktopdf-example old-build manual aspnet publish rotativa cache aot"
+          checks="settings quickstart dinktopdf-example old-build manual samples aspnet publish rotativa cache aot"
           case "${{ matrix.os }}" in windows-*) checks="$checks framework" ;; esac
           python tests/customer.py $checks | tee customer.txt
           { echo "### ${{ matrix.os }}"; echo; echo "| Result | Check | Detail |"; echo "|---|---|---|"

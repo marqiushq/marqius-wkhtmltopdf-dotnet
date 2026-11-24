@@ -5,9 +5,9 @@
     <PackageId>Marqius.Wkhtmltopdf</PackageId>
     <AssemblyName>Marqius.Wkhtmltopdf</AssemblyName>
     <RootNamespace>Marqius.Wkhtmltopdf</RootNamespace>
-    <Title>marqius-wkhtmltopdf: the maintained drop-in replacement for wkhtmltopdf</Title>
-    <Description>marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf, for Windows, Linux and macOS in one package. Wkhtmltopdf.Path gives the program's path for Rotativa, NReco.PdfGenerator, Wkhtmltopdf.NetCore or any library that runs wkhtmltopdf; Marqius.DinkToPdf builds on it for DinkToPdf's API. Same options and output as wkhtmltopdf 0.12.6, with no Qt, no libwkhtmltox and no X server. Commercial, with a 30-day free trial; free for personal, teaching and open-source use.</Description>
-    <PackageTags>wkhtmltopdf;wkhtmltoimage;html-to-pdf;pdf;html;rotativa;nreco;libwkhtmltox;marqius</PackageTags>
+    <Title>Marqius.Wkhtmltopdf: wkhtmltopdf for .NET, maintained</Title>
+    <Description>wkhtmltopdf for .NET in one package: marqius-wkhtmltopdf, the maintained drop-in replacement for wkhtmltopdf, for Windows, Linux (x64, ARM64, Alpine) and macOS. The same command line and options, so Rotativa and other libraries that run wkhtmltopdf work as before. No Qt, no X server, nothing else to install.</Description>
+    <PackageTags>wkhtmltopdf;wkhtmltoimage;html-to-pdf;html2pdf;htmltopdf;pdf;pdf-generation;pdf-converter;rotativa;nreco;aspnetcore;dotnet;csharp;docker;linux;alpine;marqius</PackageTags>
     <PackageIcon>icon.png</PackageIcon>
     <!-- the program is the package: no lib folder warning for a package that is mostly native files -->
     <NoWarn>$(NoWarn);NU5100;NU5129</NoWarn>

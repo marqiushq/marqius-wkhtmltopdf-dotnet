@@ -25,7 +25,7 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <MarqiusVersion Condition="'$(MarqiusVersion)' == ''">$(Version)</MarqiusVersion>
-    <PackageReleaseNotes>Carries marqius-wkhtmltopdf $(MarqiusVersion), built and signed by GitHub: what is new in it is at https://github.com/marqiushq/marqius-wkhtmltopdf/releases/tag/v$(MarqiusVersion)</PackageReleaseNotes>
+    <PackageReleaseNotes>Carries marqius-wkhtmltopdf $(MarqiusVersion), built and signed by GitHub. What is new in the program: https://github.com/marqiushq/marqius-wkhtmltopdf/releases/tag/v$(MarqiusVersion). Step-by-step manual: https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/blob/main/docs/manual.md</PackageReleaseNotes>
     <!-- the netstandard2.0 and net8.0 builds keep the same public API -->
     <EnablePackageValidation>true</EnablePackageValidation>
   </PropertyGroup>

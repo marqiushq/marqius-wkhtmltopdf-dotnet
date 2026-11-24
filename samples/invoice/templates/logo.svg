@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="96" viewBox="0 0 420 96">
+  <rect x="0" y="8" width="80" height="80" rx="18" fill="#0b5cad"/>
+  <path d="M22 70 V26 L58 70 V26" fill="none" stroke="white" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="98" y="50" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="34" font-weight="bold" fill="#1d2433">Northwind</text>
+  <text x="99" y="80" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="20" letter-spacing="5" fill="#6b7487">SUPPLIES LTD</text>
+</svg>

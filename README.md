@@ -1,8 +1,15 @@
-# DinkToPdf for .NET 8, without libwkhtmltox: Marqius.DinkToPdf
+# Marqius.DinkToPdf: HTML to PDF for .NET, without libwkhtmltox
 
 [![NuGet](https://img.shields.io/nuget/v/Marqius.DinkToPdf)](https://www.nuget.org/packages/Marqius.DinkToPdf)
+[![Downloads](https://img.shields.io/nuget/dt/Marqius.DinkToPdf)](https://www.nuget.org/packages/Marqius.DinkToPdf)
+[![.NET 8, 9, 10 and .NET Framework 4.6.2 or later](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010%20%7C%20Framework%204.6.2%2B-512BD4)](https://www.nuget.org/packages/Marqius.DinkToPdf)
+[![Runs on Windows, Linux, macOS and Docker](https://img.shields.io/badge/runs%20on-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Docker-0b5cad)](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/actions)
 
 **Marqius.DinkToPdf turns HTML into PDF in .NET, with the same code as DinkToPdf.** It has DinkToPdf's classes and settings, but it needs no `libwkhtmltox` file. Instead it runs marqius-wkhtmltopdf, the maintained replacement for wkhtmltopdf, which comes inside the package.
+
+![An invoice made from HTML by Marqius.DinkToPdf](https://raw.githubusercontent.com/marqiushq/marqius-wkhtmltopdf-dotnet/main/docs/images/invoice.png)
+
+*This invoice is made from HTML and CSS by Marqius.DinkToPdf: [see its code](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/tree/main/samples/invoice).*
 
 - **No more "Unable to load shared library 'libwkhtmltox'".** There is no native library to load, so that error, `DllNotFoundException` and `BadImageFormatException` cannot happen.
 - **Your code stays the same.** Every class, method, event and setting of DinkToPdf 1.0.8, with the same names, in the same `DinkToPdf` namespace. Checked on every build.
@@ -206,6 +213,10 @@ The `RUN` line installs fonts: the .NET images have none, and a PDF needs at lea
 
 ## Fonts and other languages
 
+![Thank you in eight languages, made by Marqius.DinkToPdf](https://raw.githubusercontent.com/marqiushq/marqius-wkhtmltopdf-dotnet/main/docs/images/languages.png)
+
+*Made by Marqius.DinkToPdf: [see its code](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/tree/main/samples/languages).*
+
 Letters are drawn with the fonts installed on the computer. If a page has letters that no installed font has (Japanese, for example), the PDF is still made, and the `Warning` event tells you which free font to get and gives you the command:
 
 ```
@@ -221,6 +232,12 @@ converter.Error += (sender, e) => Console.WriteLine("Error: " + e.Message);
 ```
 
 If you don't listen to them, they are not printed, as in DinkToPdf. One exception: when a PDF can't be made and nothing listens to `Error`, the reason is written to the console's error output, so it shows up in your server's log.
+
+On a Debian or Ubuntu server, this installs the fonts for all the languages above:
+
+```bash
+sudo apt-get install -y fonts-noto-core fonts-noto-cjk
+```
 
 ## Licence and trial
 
