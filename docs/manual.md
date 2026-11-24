@@ -529,36 +529,6 @@ Run it: the warning says that `chart.png` could not be loaded, and the PDF is ma
 | Pictures or styles missing | Give full addresses (`https://...`), or a `<base href>` as in chapter 3. |
 | Boxes in place of letters | Install a font that has those letters (chapter 8). |
 | A PDF that never ends | Set `PdfTools.Timeout`, as above. |
-| `Unable to load shared library 'libwkhtmltox.so'` | You are on the original DinkToPdf, which loads a native file. Marqius.DinkToPdf loads none — see below. |
-| `System.BadImageFormatException (0x8007000B)` | The original DinkToPdf again: the native file does not match the CPU. Cannot happen here — see below. |
-
-### The two errors you will never see here
-
-Both come from the original DinkToPdf, which loads a native file called
-`libwkhtmltox` — one build per operating system and per CPU, installed by hand
-beside your app. When that file is missing, or built for a different machine,
-this is what you see, word for word:
-
-```text
-Unhandled exception. System.DllNotFoundException: Unable to load shared
-library '/app/libwkhtmltox.so' or one of its dependencies.
-```
-
-```text
-System.BadImageFormatException: An attempt was made to load a program with an
-incorrect format. (Exception from HRESULT: 0x8007000B)
-   at DinkToPdf.WkHtmlToXBindings.wkhtmltopdf_init(Int32 useGraphics)
-```
-
-Marqius.DinkToPdf does not load a native library, because there is none. What
-runs is the marqius-wkhtmltopdf program — one statically linked file, brought
-in with the package for your platform, selected by your runtime identifier.
-There is no file to be missing, and no wrong build to mismatch.
-
-If your project still shows either error, chapter 11 switches it in three
-steps. The full story of the first error — why it appears in Docker and on
-ARM, and the manual fix if you stay on the original — is here:
-[Unable to load shared library 'libwkhtmltox.so': the cause and the fix](https://marqius.com/blog/dinktopdf-unable-to-load-libwkhtmltox/)
 
 ## 11. Already using DinkToPdf?
 
