@@ -1,7 +1,7 @@
 # Marqius.DinkToPdf: HTML to PDF for .NET, without libwkhtmltox
 
-[![NuGet](https://img.shields.io/nuget/v/Marqius.DinkToPdf)](https://www.nuget.org/packages/Marqius.DinkToPdf)
-[![Downloads](https://img.shields.io/nuget/dt/Marqius.DinkToPdf)](https://www.nuget.org/packages/Marqius.DinkToPdf)
+[![NuGet](https://img.shields.io/nuget/v/Marqius.DinkToPdf?color=0b5cad)](https://www.nuget.org/packages/Marqius.DinkToPdf)
+[![Downloads](https://img.shields.io/nuget/dt/Marqius.DinkToPdf?color=brightgreen)](https://www.nuget.org/packages/Marqius.DinkToPdf)
 [![.NET 8, 9, 10 and .NET Framework 4.6.2 or later](https://img.shields.io/badge/.NET-8%20%7C%209%20%7C%2010%20%7C%20Framework%204.6.2%2B-512BD4)](https://www.nuget.org/packages/Marqius.DinkToPdf)
 [![Runs on Windows, Linux, macOS and Docker](https://img.shields.io/badge/runs%20on-Windows%20%7C%20Linux%20%7C%20macOS%20%7C%20Docker-0b5cad)](https://github.com/marqiushq/marqius-wkhtmltopdf-dotnet/actions)
 
