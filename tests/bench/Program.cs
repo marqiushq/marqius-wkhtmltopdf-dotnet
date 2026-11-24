@@ -124,7 +124,7 @@ public sealed class Engine : IAsyncDisposable
     private SynchronizedConverter converter;
 #if ENGINE_MARQIUS
     public string Name => "Marqius.DinkToPdf";
-    public string Version => $"marqius-wkhtmltopdf {global::Marqius.Wkhtmltopdf.Wkhtmltopdf.Version}";
+    public string Version => "marqius-wkhtmltopdf " + global::Marqius.Wkhtmltopdf.Wkhtmltopdf.Version;
 #else
     public string Name => "DinkToPdf with libwkhtmltox";
     public string Version => $"libwkhtmltox {converter.Tools.GetLibraryVersion()}";

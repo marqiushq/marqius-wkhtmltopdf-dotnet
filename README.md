@@ -251,7 +251,6 @@ marqius-wkhtmltopdf is commercial software with a 30-day free trial.
 | Many PDFs at once | one at a time | side by side |
 | `await` | no | `ConvertAsync` (with `using Marqius.DinkToPdf;`), with cancelling |
 | Files on the server (`file:///`) | load | load |
-| `LoadSettings.BlockLocalFileAccess = true` | files still load for `HtmlContent` | files are blocked, as the setting says |
 | Text size on Windows | about an eighth bigger than on Linux | the same as on Linux, on every system |
 | A table header repeated on a new page | drawn over that page's first row | drawn above it |
 | A PDF that can't be made, with no `Error` handler | says nothing | writes the reason to the console's error output |
