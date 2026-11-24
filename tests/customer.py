@@ -24,6 +24,7 @@ a tab, its name, a tab, the detail; the exit status is 1 when one fails.
                      Marqius.DinkToPdf's DLL, and the library's code works on it with no libwkhtmltox;
                      then the same code compiles against Marqius.DinkToPdf with warnings as errors
 """
+import atexit
 import os
 import re
 import shutil
@@ -69,8 +70,21 @@ def is_pdf(path):
     return data[:5] == b"%PDF-" and b"%%EOF" in data[-64:]
 
 
+WORKSPACES = []
+
+
+@atexit.register
+def _clean():
+    # each workspace has a NuGet cache of its own (hundreds of MB): gone when the checks end, unless
+    # CUSTOMER_KEEP is set to look at them
+    if not os.environ.get("CUSTOMER_KEEP"):
+        for root in WORKSPACES:
+            shutil.rmtree(root, ignore_errors=True)
+
+
 def workspace():
     root = Path(tempfile.mkdtemp(prefix="marqius-customer-"))
+    WORKSPACES.append(root)
     env = dict(os.environ, DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1", NUGET_PACKAGES=str(root / "nuget-cache"))
     # CUSTOMER_FEED=nuget.org: the packages as nuget.org serves them, after they are published
     local = "" if os.environ.get("CUSTOMER_FEED") == "nuget.org" else f'    <add key="these packages" value="{DIST}" />\n'
