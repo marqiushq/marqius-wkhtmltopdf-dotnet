@@ -26,6 +26,12 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
+      # GitHub's Ubuntu machines carry Microsoft's apt repository as well as Ubuntu's. On 27 Nov 2026
+      # it answered 403, and `apt-get update` failed the run. A customer's Ubuntu has only Ubuntu's
+      # sources (in sources.list on 22.04, sources.list.d/ubuntu.sources from 24.04), so only those stay.
+      - name: Only Ubuntu's own apt sources, as on a customer's machine
+        if: runner.os == 'Linux' && runner.environment == 'github-hosted'
+        run: sudo find /etc/apt/sources.list.d -mindepth 1 -maxdepth 1 ! -type d ! -name ubuntu.sources -print -delete
       - name: libwkhtmltox's system libraries, and the fonts all three use
         run: sudo apt-get update -qq && sudo apt-get install -y -qq libx11-6 libxext6 libxrender1 libfontconfig1 libfreetype6 fonts-liberation
       - name: The latest release's programs, checked, in both packages
